@@ -1,4 +1,5 @@
 import { TILE_SIZE, MAP_SIZE, WEAPONS } from './constants.js';
+import { SKINS, renderSkinDetail } from './skins.js';
 
 export class Player {
   constructor() {
@@ -11,14 +12,23 @@ export class Player {
     this.weaponIndex = 0;
     this.fireCooldown = 0;
     this.invulnTimer = 0;
+    this.skinIndex = 0;
   }
 
   get weapon() {
     return WEAPONS[this.weaponIndex];
   }
 
+  get skin() {
+    return SKINS[this.skinIndex];
+  }
+
   cycleWeapon() {
     this.weaponIndex = (this.weaponIndex + 1) % WEAPONS.length;
+  }
+
+  cycleSkin() {
+    this.skinIndex = (this.skinIndex + 1) % SKINS.length;
   }
 
   update(dt, moveX, moveY) {
@@ -61,20 +71,32 @@ export class Player {
     const blink = this.invulnTimer > 0 && Math.sin(this.invulnTimer * 30) > 0;
     if (blink) return;
 
+    const sk = this.skin;
+
+    // Detail behind body (cape, etc)
+    if (sk.detail === 'cape') {
+      renderSkinDetail(ctx, s.x, s.y, this.radius, sk);
+    }
+
     // Body
     ctx.beginPath();
     ctx.arc(s.x, s.y, this.radius, 0, Math.PI * 2);
     const grad = ctx.createRadialGradient(s.x - 3, s.y - 3, 2, s.x, s.y, this.radius);
-    grad.addColorStop(0, '#66ccff');
-    grad.addColorStop(1, '#2266aa');
+    grad.addColorStop(0, sk.body1);
+    grad.addColorStop(1, sk.body2);
     ctx.fillStyle = grad;
     ctx.fill();
 
     // Visor
     ctx.beginPath();
     ctx.arc(s.x, s.y - 3, 5, 0, Math.PI * 2);
-    ctx.fillStyle = '#aaeeff';
+    ctx.fillStyle = sk.visor;
     ctx.fill();
+
+    // Detail on top of body
+    if (sk.detail && sk.detail !== 'cape') {
+      renderSkinDetail(ctx, s.x, s.y, this.radius, sk);
+    }
 
     // Health bar
     const barW = 30;
@@ -84,5 +106,12 @@ export class Player {
     ctx.fillRect(s.x - barW / 2, s.y - this.radius - 10, barW, barH);
     ctx.fillStyle = hpPct > 0.3 ? '#44ff66' : '#ff4444';
     ctx.fillRect(s.x - barW / 2, s.y - this.radius - 10, barW * hpPct, barH);
+
+    // Skin name
+    ctx.font = '9px -apple-system, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.fillText(sk.name, s.x, s.y + this.radius + 12);
+    ctx.textAlign = 'left';
   }
 }

@@ -8,10 +8,10 @@ const game = new Game(canvas);
 
 btnStart.addEventListener('click', () => {
   titleScreen.style.display = 'none';
+  canvas.focus();
   game.start();
 });
 
-// Handle resize for both desktop and mobile orientation changes
 function resize() {
   canvas.width = window.innerWidth * devicePixelRatio;
   canvas.height = window.innerHeight * devicePixelRatio;

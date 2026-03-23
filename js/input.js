@@ -7,15 +7,28 @@ export class InputHandler {
     this.onDragEnd = null;
     this.keys = new Set();
     this.primaryTouch = null;
+    this.mouseX = 0;
+    this.mouseY = 0;
+    this.spaceDown = false;
+    this.enterPressed = false;
 
     canvas.addEventListener('touchstart', (e) => this.handleTouchStart(e), { passive: false });
     canvas.addEventListener('touchmove', (e) => this.handleTouchMove(e), { passive: false });
     canvas.addEventListener('touchend', (e) => this.handleTouchEnd(e));
     canvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
-    canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+    window.addEventListener('mousemove', (e) => this.handleMouseMove(e));
     canvas.addEventListener('mouseup', (e) => this.handleMouseUp(e));
-    window.addEventListener('keydown', (e) => this.keys.add(e.key.toLowerCase()));
-    window.addEventListener('keyup', (e) => this.keys.delete(e.key.toLowerCase()));
+    window.addEventListener('keydown', (e) => {
+      const isSpace = e.key === ' ' || e.code === 'Space';
+      if (isSpace) { e.preventDefault(); this.spaceDown = true; }
+      if (e.key === 'Enter') this.enterPressed = true;
+      this.keys.add(e.key.toLowerCase());
+    });
+    window.addEventListener('keyup', (e) => {
+      const isSpace = e.key === ' ' || e.code === 'Space';
+      if (isSpace) this.spaceDown = false;
+      this.keys.delete(e.key.toLowerCase());
+    });
   }
 
   getPos(clientX, clientY) {
@@ -56,15 +69,18 @@ export class InputHandler {
 
   handleMouseDown(e) {
     const pos = this.getPos(e.clientX, e.clientY);
+    this.mouseX = pos.x;
+    this.mouseY = pos.y;
     this.mouseDown = true;
     if (this.onDragStart) this.onDragStart(pos.x, pos.y);
     if (this.onTap) this.onTap(pos.x, pos.y);
   }
 
   handleMouseMove(e) {
-    if (!this.mouseDown) return;
     const pos = this.getPos(e.clientX, e.clientY);
-    if (this.onDrag) this.onDrag(pos.x, pos.y);
+    this.mouseX = pos.x;
+    this.mouseY = pos.y;
+    if (this.mouseDown && this.onDrag) this.onDrag(pos.x, pos.y);
   }
 
   handleMouseUp() {

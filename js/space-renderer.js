@@ -74,6 +74,24 @@ export function renderSpaceWorld(ctx, view) {
     ctx.globalAlpha = 1;
   }
 
+  // Aliens
+  view.aliens.render(ctx);
+
+  // Enemy bullets
+  for (const b of view.enemyBullets) {
+    if (!b.active) continue;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+    ctx.fillStyle = b.color;
+    ctx.fill();
+    ctx.globalAlpha = 0.25;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r * 3, 0, Math.PI * 2);
+    ctx.fillStyle = '#ff0022';
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
   // Particles
   for (const p of view.particles) {
     if (!p.active) continue;
@@ -101,27 +119,65 @@ export function renderShip(ctx, view) {
     ctx.fill();
   }
 
-  ctx.beginPath();
-  ctx.moveTo(0, -20);
-  ctx.lineTo(-14, 16);
-  ctx.lineTo(-6, 10);
-  ctx.lineTo(0, 14);
-  ctx.lineTo(6, 10);
-  ctx.lineTo(14, 16);
-  ctx.closePath();
-  const grad = ctx.createLinearGradient(0, -20, 0, 16);
-  grad.addColorStop(0, '#66ccff');
-  grad.addColorStop(1, '#2255aa');
-  ctx.fillStyle = grad;
-  ctx.fill();
-  ctx.strokeStyle = '#88ddff';
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.arc(0, -6, 5, 0, Math.PI * 2);
-  ctx.fillStyle = '#aaeeff';
-  ctx.fill();
+  if (view.hijacked) {
+    const h = view.hijacked;
+    const r = h.radius;
+    // Hijacked alien body with player cockpit color
+    ctx.beginPath();
+    ctx.moveTo(-r, r * 0.6);
+    ctx.lineTo(-r * 0.4, -r * 0.3);
+    ctx.lineTo(r * 0.4, -r * 0.3);
+    ctx.lineTo(r, r * 0.6);
+    ctx.closePath();
+    ctx.fillStyle = h.color;
+    ctx.globalAlpha = 0.5;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, -r);
+    ctx.lineTo(-r * 0.5, r * 0.5);
+    ctx.lineTo(0, r * 0.3);
+    ctx.lineTo(r * 0.5, r * 0.5);
+    ctx.closePath();
+    ctx.fillStyle = h.color;
+    ctx.fill();
+    ctx.strokeStyle = '#88ddff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // Player cockpit
+    ctx.beginPath();
+    ctx.arc(0, -r * 0.3, r * 0.25, 0, Math.PI * 2);
+    ctx.fillStyle = '#66ccff';
+    ctx.fill();
+    // Timer ring
+    const pct = view.hijackTimer / 15;
+    ctx.beginPath();
+    ctx.arc(0, 0, r + 6, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * pct);
+    ctx.strokeStyle = `rgba(100,200,255,${0.3 + pct * 0.4})`;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  } else {
+    ctx.beginPath();
+    ctx.moveTo(0, -20);
+    ctx.lineTo(-14, 16);
+    ctx.lineTo(-6, 10);
+    ctx.lineTo(0, 14);
+    ctx.lineTo(6, 10);
+    ctx.lineTo(14, 16);
+    ctx.closePath();
+    const grad = ctx.createLinearGradient(0, -20, 0, 16);
+    grad.addColorStop(0, '#66ccff');
+    grad.addColorStop(1, '#2255aa');
+    ctx.fillStyle = grad;
+    ctx.fill();
+    ctx.strokeStyle = '#88ddff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(0, -6, 5, 0, Math.PI * 2);
+    ctx.fillStyle = '#aaeeff';
+    ctx.fill();
+  }
 
   ctx.restore();
 }
@@ -137,6 +193,12 @@ export function renderSpaceHUD(ctx, view) {
   ctx.fillStyle = '#dde';
   ctx.fillText(`☄️ Score: ${view.score}`, 16, 28);
   ctx.fillText(`⛏️ Metal: ${view.metal}`, 200, 28);
+  ctx.fillStyle = '#ff6666';
+  ctx.fillText(`👾 Wave ${view.aliens.wave}`, 380, 28);
+  const fuelColor = view.fuel > 20 ? '#44ff88' : view.fuel > 5 ? '#ffaa44' : '#ff4444';
+  ctx.fillStyle = fuelColor;
+  ctx.fillText(`⛽ ${view.fuel | 0}%`, 530, 28);
+  ctx.fillStyle = '#dde';
   ctx.fillStyle = view.weapon.color;
   ctx.fillText(`🔫 ${view.weapon.name}`, w - 180, 28);
 
@@ -144,7 +206,7 @@ export function renderSpaceHUD(ctx, view) {
   const bx = w / 2 - bw / 2;
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
   ctx.fillRect(bx, 16, bw, 12);
-  const hpPct = view.shipHealth / 100;
+  const hpPct = view.shipHealth / view.upgrades.getMaxHp();
   ctx.fillStyle = hpPct > 0.3 ? '#44ff66' : '#ff4444';
   ctx.fillRect(bx, 16, bw * hpPct, 12);
   ctx.strokeStyle = 'rgba(100,120,255,0.3)';
@@ -172,6 +234,21 @@ export function renderSpaceHUD(ctx, view) {
   ctx.fillText('🔄', btnX + btnS / 2, btnY + btnS / 2 + 8);
   ctx.textAlign = 'left';
 
+  // Upgrade button
+  const upgBtnY = btnY - btnS - 12;
+  ctx.fillStyle = view.upgrades.showMenu ? '#445588' : '#334';
+  ctx.strokeStyle = '#88aaff';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(btnX, upgBtnY, btnS, btnS, 10);
+  ctx.fill();
+  ctx.stroke();
+  ctx.font = '24px -apple-system, system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#fff';
+  ctx.fillText('⬆', btnX + btnS / 2, upgBtnY + btnS / 2 + 8);
+  ctx.textAlign = 'left';
+
   if (view.landTarget >= 0) {
     const lbw = 160;
     const lbh = 44;
@@ -187,7 +264,44 @@ export function renderSpaceHUD(ctx, view) {
     ctx.font = '18px -apple-system, system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#ccffcc';
-    ctx.fillText(`⬇ Land on ${view.planets[view.landTarget].name}`, w / 2, lby + lbh / 2 + 6);
+    ctx.fillText(`⏎ Land on ${view.planets[view.landTarget].name}`, w / 2, lby + lbh / 2 + 6);
+    ctx.textAlign = 'left';
+  }
+
+  // Board button
+  if (view.boardTarget >= 0) {
+    const alien = view.aliens.pool[view.boardTarget];
+    const bbw = 160, bbh = 44;
+    const bbx = w / 2 - bbw / 2;
+    const bby = view.landTarget >= 0 ? h - 130 : h - 70;
+    ctx.fillStyle = 'rgba(120, 40, 120, 0.9)';
+    ctx.beginPath();
+    ctx.roundRect(bbx, bby, bbw, bbh, 10);
+    ctx.fill();
+    ctx.strokeStyle = alien.color;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.font = '18px -apple-system, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffccff';
+    ctx.fillText('⏎ Board Ship', w / 2, bby + bbh / 2 + 6);
+    ctx.textAlign = 'left';
+    // Indicator ring on the alien
+    ctx.beginPath();
+    ctx.arc(alien.x, alien.y, alien.radius + 12, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255,100,255,0.5)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Hijack status
+  if (view.hijacked) {
+    ctx.font = '14px -apple-system, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = view.hijacked.color;
+    ctx.fillText(`🏴‍☠️ HIJACKED — ${view.hijackTimer.toFixed(1)}s`, w / 2, 48);
     ctx.textAlign = 'left';
   }
 
@@ -215,7 +329,10 @@ export function renderSpaceHUD(ctx, view) {
     ctx.font = '20px -apple-system, system-ui, sans-serif';
     ctx.fillStyle = '#aab';
     ctx.fillText(`Score: ${view.score}  Metal: ${view.metal}`, w / 2, h / 2 + 10);
-    ctx.fillText('Tap to return', w / 2, h / 2 + 40);
+    ctx.fillText('Tap to respawn at home', w / 2, h / 2 + 40);
     ctx.textAlign = 'left';
   }
+
+  // Upgrade menu (on top of everything)
+  view.upgrades.render(ctx, w, h, view.metal);
 }

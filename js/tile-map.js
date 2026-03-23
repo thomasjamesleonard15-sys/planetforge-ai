@@ -136,6 +136,19 @@ export class TileMap {
         ctx.fillStyle = '#5588cc';
         ctx.fillRect(sx + 10, sy + 10, ts - 20, ts - 20);
         break;
+      case TILE.BED:
+        ctx.fillStyle = COLORS.dirt;
+        ctx.fillRect(sx, sy, ts, ts);
+        // Frame
+        ctx.fillStyle = '#7a5533';
+        ctx.fillRect(sx + 4, sy + 8, ts - 8, ts - 12);
+        // Mattress
+        ctx.fillStyle = '#cc4444';
+        ctx.fillRect(sx + 6, sy + 10, ts - 12, ts - 18);
+        // Pillow
+        ctx.fillStyle = '#eeddcc';
+        ctx.fillRect(sx + 8, sy + 10, 14, 10);
+        break;
     }
   }
 

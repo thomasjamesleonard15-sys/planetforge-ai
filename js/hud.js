@@ -5,6 +5,7 @@ const BUILD_OPTIONS = [
   { type: TILE.TURRET, label: 'Turret', icon: '🔫' },
   { type: TILE.WALL, label: 'Wall', icon: '🧱' },
   { type: TILE.SOLAR, label: 'Solar', icon: '⚡' },
+  { type: TILE.BED, label: 'Bed', icon: '🛏️' },
 ];
 
 export class HUD {

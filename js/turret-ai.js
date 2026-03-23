@@ -10,7 +10,7 @@ export class TurretAI {
     this.cooldowns = new Map();
   }
 
-  update(dt, tileMap, enemies, projectiles) {
+  update(dt, tileMap, enemies, projectiles, nightMonsters) {
     for (let y = 0; y < MAP_SIZE; y++) {
       for (let x = 0; x < MAP_SIZE; x++) {
         if (tileMap.get(x, y) !== TILE.TURRET) continue;
@@ -28,14 +28,20 @@ export class TurretAI {
         let closest = null;
         let closestDist = TURRET_RANGE;
 
-        for (const e of enemies.pool) {
-          if (!e.active) continue;
-          const dx = e.x - tx;
-          const dy = e.y - ty;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < closestDist) {
-            closestDist = dist;
-            closest = e;
+        if (enemies) {
+          for (const e of enemies.pool) {
+            if (!e.active) continue;
+            const dx = e.x - tx, dy = e.y - ty;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < closestDist) { closestDist = dist; closest = e; }
+          }
+        }
+        if (nightMonsters) {
+          for (const m of nightMonsters) {
+            if (!m.active) continue;
+            const dx = m.x - tx, dy = m.y - ty;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < closestDist) { closestDist = dist; closest = m; }
           }
         }
 

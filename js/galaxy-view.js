@@ -10,6 +10,7 @@ export class GalaxyView {
     this.time = 0;
 
     this.addPlanet('Terra Prime');
+    this.addPlanet('Gas Station');
   }
 
   addPlanet(name) {

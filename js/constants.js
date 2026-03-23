@@ -10,6 +10,7 @@ export const TILE = {
   SOLAR: 5,
   ROCK: 6,
   WATER: 7,
+  BED: 8,
 };
 
 export const CROP_STAGES = 4;
@@ -22,6 +23,7 @@ export const BUILDING_COSTS = {
   [TILE.WALL]: { food: 0, metal: 15, energy: 0 },
   [TILE.BARRACKS]: { food: 20, metal: 40, energy: 20 },
   [TILE.SOLAR]: { food: 0, metal: 20, energy: 0 },
+  [TILE.BED]: { food: 10, metal: 10, energy: 0 },
 };
 
 export const WEAPONS = [
@@ -49,6 +51,7 @@ export const COLORS = {
   turret: '#4a6a8a',
   barracks: '#6a4a3a',
   solar: '#3a5a8a',
+  bed: '#6a3a3a',
   hud: 'rgba(10, 10, 30, 0.85)',
   hudBorder: 'rgba(100, 120, 255, 0.3)',
   health: '#44ff66',

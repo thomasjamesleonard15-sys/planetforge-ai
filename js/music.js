@@ -1,0 +1,208 @@
+let ctx = null;
+let masterGain = null;
+let playing = false;
+let nodes = [];
+let loopTimer = null;
+
+const SCALES = {
+  galaxy: [0, 3, 5, 7, 10, 12, 15, 17],       // minor pentatonic + octave
+  space: [0, 2, 4, 7, 9, 12, 14, 16],           // major pentatonic
+  surface: [0, 2, 3, 5, 7, 8, 10, 12],          // natural minor
+  battle: [0, 1, 4, 5, 7, 8, 11, 12],           // harmonic minor
+};
+
+const BASE_NOTES = {
+  galaxy: 55,    // A1
+  space: 65.41,  // C2
+  surface: 73.42, // D2
+  battle: 61.74, // B1
+};
+
+export class MusicSystem {
+  constructor() {
+    this.mode = 'galaxy';
+    this.volume = 0.7;
+    this.muted = false;
+    this.beat = 0;
+    this.measureLen = 8;
+    this.bpm = 72;
+    this.nextNoteTime = 0;
+  }
+
+  init() {
+    if (!ctx) {
+      ctx = new (window.AudioContext || window.webkitAudioContext)();
+      masterGain = ctx.createGain();
+      masterGain.gain.value = this.volume;
+      masterGain.connect(ctx.destination);
+    }
+    if (ctx.state === 'suspended') ctx.resume();
+  }
+
+  setMode(mode) {
+    if (this.mode === mode) return;
+    this.mode = mode;
+    this.beat = 0;
+  }
+
+  toggle() {
+    this.muted = !this.muted;
+    if (masterGain) masterGain.gain.setTargetAtTime(this.muted ? 0 : this.volume, ctx.currentTime, 0.3);
+  }
+
+  start() {
+    this.init();
+    if (ctx.state === 'suspended') ctx.resume();
+    if (playing) return;
+    playing = true;
+    this.nextNoteTime = ctx.currentTime;
+    this.schedule();
+  }
+
+  stop() {
+    playing = false;
+    if (loopTimer) { clearTimeout(loopTimer); loopTimer = null; }
+    for (const n of nodes) { try { n.stop(); } catch (_) {} }
+    nodes = [];
+  }
+
+  schedule() {
+    if (!playing) return;
+    while (this.nextNoteTime < ctx.currentTime + 0.2) {
+      this.playBeat(this.nextNoteTime);
+      this.beat = (this.beat + 1) % (this.measureLen * 4);
+      this.nextNoteTime += 60 / this.bpm / 2;
+    }
+    loopTimer = setTimeout(() => this.schedule(), 100);
+  }
+
+  playBeat(time) {
+    const scale = SCALES[this.mode] || SCALES.galaxy;
+    const base = BASE_NOTES[this.mode] || 55;
+    const beat = this.beat;
+
+    // Bass drone - plays on beat 0 of each measure
+    if (beat % this.measureLen === 0) {
+      this.playTone(base, time, 1.5, 'sine', 0.25, 0);
+      this.playTone(base * 1.5, time, 1.5, 'sine', 0.12, 0);
+    }
+
+    // Sub bass pulse
+    if (beat % 4 === 0) {
+      this.playTone(base * 0.5, time, 0.4, 'sine', 0.2, 0);
+    }
+
+    // Melody - procedural based on beat position
+    if (beat % 2 === 0 && Math.random() > 0.3) {
+      const idx = this.melodyIndex(beat);
+      const note = base * 2 * Math.pow(2, scale[idx % scale.length] / 12);
+      const dur = Math.random() > 0.5 ? 0.4 : 0.2;
+      this.playTone(note, time, dur, 'triangle', 0.15, 0.01);
+    }
+
+    // High shimmer - arpeggiated notes
+    if (beat % 3 === 0 && Math.random() > 0.5) {
+      const idx = (beat / 3 + (Math.random() * 3 | 0)) % scale.length;
+      const note = base * 4 * Math.pow(2, scale[idx] / 12);
+      this.playTone(note, time, 0.6, 'sine', 0.08, 0.05);
+    }
+
+    // Pad chord - sustained, changes every 2 measures
+    if (beat === 0 || beat === this.measureLen * 2) {
+      const chordRoot = beat === 0 ? 0 : (Math.random() > 0.5 ? 3 : 5);
+      const root = base * 2 * Math.pow(2, scale[chordRoot % scale.length] / 12);
+      const third = base * 2 * Math.pow(2, scale[(chordRoot + 2) % scale.length] / 12);
+      const fifth = base * 2 * Math.pow(2, scale[(chordRoot + 4) % scale.length] / 12);
+      this.playPad(root, time, 3, 0.08);
+      this.playPad(third, time, 3, 0.06);
+      this.playPad(fifth, time, 3, 0.06);
+    }
+
+    // Percussion - mode dependent
+    if (this.mode === 'battle' || this.mode === 'space') {
+      if (beat % 4 === 0) this.playNoise(time, 0.08, 0.12, 800);
+      if (beat % 4 === 2) this.playNoise(time, 0.05, 0.06, 3000);
+      if (beat % 2 === 1 && Math.random() > 0.6) this.playNoise(time, 0.03, 0.04, 5000);
+    } else {
+      if (beat % 8 === 0) this.playNoise(time, 0.1, 0.06, 600);
+      if (beat % 8 === 4 && Math.random() > 0.4) this.playNoise(time, 0.06, 0.04, 2000);
+    }
+  }
+
+  melodyIndex(beat) {
+    // Simple deterministic melody pattern with variation
+    const patterns = [0, 2, 4, 3, 5, 4, 2, 1, 0, 3, 5, 7, 4, 2, 3, 0];
+    return patterns[beat % patterns.length] + ((beat / 16 | 0) % 3);
+  }
+
+  playTone(freq, time, dur, type, vol, attack) {
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0, time);
+    gain.gain.linearRampToValueAtTime(vol, time + (attack || 0.01));
+    gain.gain.exponentialRampToValueAtTime(0.001, time + dur);
+    osc.connect(gain);
+    gain.connect(masterGain);
+    osc.start(time);
+    osc.stop(time + dur + 0.05);
+    nodes.push(osc);
+    this.cleanNodes();
+  }
+
+  playPad(freq, time, dur, vol) {
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc2.type = 'triangle';
+    osc.frequency.value = freq;
+    osc2.frequency.value = freq * 1.002; // slight detune for width
+    gain.gain.setValueAtTime(0, time);
+    gain.gain.linearRampToValueAtTime(vol, time + 0.5);
+    gain.gain.linearRampToValueAtTime(vol * 0.7, time + dur - 0.5);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + dur);
+    osc.connect(gain);
+    osc2.connect(gain);
+    gain.connect(masterGain);
+    osc.start(time);
+    osc2.start(time);
+    osc.stop(time + dur + 0.1);
+    osc2.stop(time + dur + 0.1);
+    nodes.push(osc, osc2);
+    this.cleanNodes();
+  }
+
+  playNoise(time, dur, vol, filterFreq) {
+    if (!ctx) return;
+    const bufSize = ctx.sampleRate * dur;
+    const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = filterFreq;
+    filter.Q.value = 1;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(vol, time);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + dur);
+    src.connect(filter);
+    filter.connect(gain);
+    gain.connect(masterGain);
+    src.start(time);
+    src.stop(time + dur + 0.01);
+    nodes.push(src);
+    this.cleanNodes();
+  }
+
+  cleanNodes() {
+    if (nodes.length > 60) nodes = nodes.slice(-30);
+  }
+}
+
+export const music = new MusicSystem();
