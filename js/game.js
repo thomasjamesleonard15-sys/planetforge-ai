@@ -154,6 +154,7 @@ export class Game {
     this.cutscene = null;
     this.state = STATE.SURFACE;
     music.setMode(isHome ? 'surface' : 'battle');
+    if (isHome) music.playHomeJingle();
   }
 
   leaveSurface() {
@@ -196,6 +197,7 @@ export class Game {
     this.cameFromSpace = false;
     this.state = STATE.SURFACE;
     music.setMode('surface');
+    music.playHomeJingle();
   }
 
   startDeathCutscene() {
@@ -267,7 +269,9 @@ export class Game {
       // Enter/Return to land on planet or board alien (after update so targets are fresh)
       if (this.input.enterPressed) {
         this.input.enterPressed = false;
-        if (this.space.boardTarget >= 0) {
+        if (this.space.nearPortal) {
+          this.space.wantWarp = true;
+        } else if (this.space.boardTarget >= 0) {
           this.space.boardAlien();
         } else if (this.space.landTarget >= 0) {
           this.space.wantLand = true;
@@ -278,6 +282,22 @@ export class Game {
       if (this.space.wantLand) {
         this.space.wantLand = false;
         this.enterSurface();
+      }
+      // Warp to next galaxy
+      if (this.space.wantWarp) {
+        this.space.wantWarp = false;
+        const totalGalaxies = this.galaxy.galaxies.length;
+        if (this.galaxy.currentGalaxy < totalGalaxies - 1) {
+          this.galaxy.currentGalaxy++;
+        } else {
+          this.galaxy.addGalaxy();
+          this.galaxy.currentGalaxy = this.galaxy.galaxies.length - 1;
+        }
+        this.galaxy.selectedPlanet = -1;
+        // Re-enter space in new galaxy
+        this.space = new SpaceView(this.galaxy.planets);
+        this.space.resize(this.width, this.height);
+        this.space.fuel = 80;
       }
       // Out of fuel
       if (this.space.outOfFuel) {

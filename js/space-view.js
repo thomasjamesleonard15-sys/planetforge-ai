@@ -20,6 +20,8 @@ export class SpaceView {
     this.fireCooldown = 0; this.gameOver = false;
     this.fuel = 100; this.maxFuel = 100; this.outOfFuel = false;
     this.landTarget = -1; this.wantLand = false;
+    this.portal = { x: 0, y: 0, radius: 45, rot: 0 };
+    this.nearPortal = false; this.wantWarp = false;
     this.boardTarget = -1; this.hijacked = null; this.hijackTimer = 0;
     this.planets = []; this.initPlanets(galaxyPlanets);
     this.asteroids = createAsteroidPool(40);
@@ -70,11 +72,21 @@ export class SpaceView {
       p.spaceY = m + Math.random() * (this.screenH - m * 2);
       p.x = p.spaceX; p.y = p.spaceY;
     }
+    // Place portal in top-right area away from planets
+    this.portal.x = this.screenW - 100;
+    this.portal.y = 120;
   }
 
   get weapon() { return WEAPONS[this.weaponIndex]; }
 
   handleTouchStart(sx, sy) {
+    // Warp button when near portal
+    if (this.nearPortal) {
+      const wbx = this.screenW / 2 - 80, wby = this.screenH - 130;
+      if (sx >= wbx && sx <= wbx + 160 && sy >= wby && sy <= wby + 44) {
+        this.wantWarp = true; return;
+      }
+    }
     const btnS = 56;
     // Upgrade menu button (above weapon switch)
     const upgBtnX = this.screenW - btnS - 16;
@@ -258,6 +270,12 @@ export class SpaceView {
       const dx = this.shipX - p.spaceX, dy = this.shipY - p.spaceY;
       if (Math.sqrt(dx * dx + dy * dy) < p.radius * LAND_RANGE) this.landTarget = i;
     }
+
+    // Portal
+    this.portal.rot += dt * 2;
+    const pdx = this.shipX - this.portal.x, pdy = this.shipY - this.portal.y;
+    this.nearPortal = Math.sqrt(pdx * pdx + pdy * pdy) < this.portal.radius * 2;
+
     this.checkCollisions();
   }
 

@@ -200,6 +200,76 @@ export class MusicSystem {
     this.cleanNodes();
   }
 
+  playHomeJingle() {
+    this.init();
+    if (ctx.state === 'suspended') ctx.resume();
+    const t = ctx.currentTime + 0.05;
+    const bpm = 140;
+    const beat = 60 / bpm;
+
+    // Fast country/fiddle-style melody in A major
+    const melody = [
+      440, 494, 554, 494, 440, 370, 330, 370,
+      440, 554, 659, 554, 440, 494, 554, 440,
+      370, 330, 370, 440, 494, 554, 659, 740,
+      659, 554, 440, 370, 330, 370, 440, 440,
+    ];
+
+    // Fiddle melody — sawtooth with filter for twangy sound
+    for (let i = 0; i < melody.length; i++) {
+      const time = t + i * beat * 0.5;
+      this.playFiddle(melody[i], time, beat * 0.45, 0.12);
+    }
+
+    // Bass stomps on beats
+    for (let i = 0; i < 16; i++) {
+      const time = t + i * beat;
+      this.playTone(110, time, beat * 0.3, 'sine', 0.2, 0);
+      if (i % 2 === 0) this.playTone(55, time, beat * 0.2, 'sine', 0.15, 0);
+    }
+
+    // Kick drum on every beat
+    for (let i = 0; i < 16; i++) {
+      this.playNoise(t + i * beat, 0.06, 0.15, 200);
+    }
+
+    // Snare on offbeats
+    for (let i = 0; i < 16; i++) {
+      this.playNoise(t + i * beat + beat * 0.5, 0.04, 0.08, 4000);
+    }
+
+    // Fast hi-hat
+    for (let i = 0; i < 32; i++) {
+      this.playNoise(t + i * beat * 0.5, 0.02, 0.04, 8000);
+    }
+  }
+
+  playFiddle(freq, time, dur, vol) {
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+    osc.type = 'sawtooth';
+    osc2.type = 'sawtooth';
+    osc.frequency.value = freq;
+    osc2.frequency.value = freq * 1.005; // slight detune
+    filter.type = 'lowpass';
+    filter.frequency.value = 3000;
+    filter.Q.value = 2;
+    gain.gain.setValueAtTime(0, time);
+    gain.gain.linearRampToValueAtTime(vol, time + 0.01);
+    gain.gain.setValueAtTime(vol, time + dur * 0.7);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + dur);
+    osc.connect(filter); osc2.connect(filter);
+    filter.connect(gain);
+    gain.connect(masterGain);
+    osc.start(time); osc2.start(time);
+    osc.stop(time + dur + 0.05); osc2.stop(time + dur + 0.05);
+    nodes.push(osc, osc2);
+    this.cleanNodes();
+  }
+
   cleanNodes() {
     if (nodes.length > 60) nodes = nodes.slice(-30);
   }

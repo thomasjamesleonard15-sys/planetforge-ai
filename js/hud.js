@@ -6,6 +6,11 @@ const BUILD_OPTIONS = [
   { type: TILE.WALL, label: 'Wall', icon: '🧱' },
   { type: TILE.SOLAR, label: 'Solar', icon: '⚡' },
   { type: TILE.BED, label: 'Bed', icon: '🛏️' },
+  { type: TILE.CARPET, label: 'Carpet', icon: '🟥' },
+  { type: TILE.TV, label: 'TV', icon: '📺' },
+  { type: TILE.LAMP, label: 'Lamp', icon: '💡' },
+  { type: TILE.PLANT, label: 'Plant', icon: '🪴' },
+  { type: TILE.TROPHY, label: 'Trophy', icon: '🏆' },
 ];
 
 export class HUD {

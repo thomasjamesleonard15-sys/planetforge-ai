@@ -13,6 +13,63 @@ export function renderSpaceWorld(ctx, view) {
     ctx.fill();
   }
 
+  // Portal
+  const pp = view.portal;
+  ctx.save();
+  ctx.translate(pp.x, pp.y);
+  // Outer glow
+  const glow = ctx.createRadialGradient(0, 0, pp.radius * 0.3, 0, 0, pp.radius * 1.5);
+  glow.addColorStop(0, 'rgba(150, 80, 255, 0.3)');
+  glow.addColorStop(0.5, 'rgba(100, 50, 200, 0.15)');
+  glow.addColorStop(1, 'rgba(80, 30, 160, 0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(0, 0, pp.radius * 1.5, 0, Math.PI * 2);
+  ctx.fill();
+  // Swirl rings
+  for (let r = 0; r < 4; r++) {
+    ctx.beginPath();
+    const ringR = pp.radius * (0.4 + r * 0.2);
+    const startA = pp.rot + r * 0.8;
+    ctx.arc(0, 0, ringR, startA, startA + Math.PI * 1.2);
+    ctx.strokeStyle = `rgba(${150 + r * 25}, ${80 + r * 20}, 255, ${0.6 - r * 0.1})`;
+    ctx.lineWidth = 3 - r * 0.5;
+    ctx.stroke();
+  }
+  // Center void
+  const voidGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, pp.radius * 0.4);
+  voidGrad.addColorStop(0, '#1a0a2a');
+  voidGrad.addColorStop(1, 'rgba(80, 30, 160, 0.5)');
+  ctx.fillStyle = voidGrad;
+  ctx.beginPath();
+  ctx.arc(0, 0, pp.radius * 0.4, 0, Math.PI * 2);
+  ctx.fill();
+  // Sparkles
+  for (let s = 0; s < 6; s++) {
+    const sa = pp.rot * 1.5 + s * Math.PI / 3;
+    const sr = pp.radius * (0.5 + Math.sin(pp.rot * 3 + s) * 0.3);
+    ctx.fillStyle = `rgba(200, 150, 255, ${0.5 + Math.sin(pp.rot * 4 + s) * 0.3})`;
+    ctx.beginPath();
+    ctx.arc(Math.cos(sa) * sr, Math.sin(sa) * sr, 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+  // Label
+  ctx.font = '13px -apple-system, system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = view.nearPortal ? '#cc88ff' : '#7755aa';
+  ctx.fillText('🌀 Galaxy Portal', pp.x, pp.y + pp.radius + 16);
+  if (view.nearPortal) {
+    ctx.beginPath();
+    ctx.arc(pp.x, pp.y, pp.radius * 2, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(150, 80, 255, 0.25)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 6]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  ctx.textAlign = 'left';
+
   // Planets
   for (let i = 0; i < view.planets.length; i++) {
     const p = view.planets[i];
@@ -294,6 +351,24 @@ export function renderSpaceHUD(ctx, view) {
     ctx.setLineDash([4, 4]);
     ctx.stroke();
     ctx.setLineDash([]);
+  }
+
+  // Warp button when near portal
+  if (view.nearPortal) {
+    const wbw = 160, wbh = 44;
+    const wbx = w / 2 - wbw / 2, wby = h - 130;
+    ctx.fillStyle = 'rgba(80, 30, 120, 0.9)';
+    ctx.beginPath();
+    ctx.roundRect(wbx, wby, wbw, wbh, 10);
+    ctx.fill();
+    ctx.strokeStyle = '#aa66ff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.font = '18px -apple-system, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ddccff';
+    ctx.fillText('⏎ Warp Galaxy', w / 2, wby + wbh / 2 + 6);
+    ctx.textAlign = 'left';
   }
 
   // Hijack status

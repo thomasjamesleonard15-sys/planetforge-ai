@@ -11,6 +11,11 @@ export const TILE = {
   ROCK: 6,
   WATER: 7,
   BED: 8,
+  CARPET: 9,
+  TV: 10,
+  LAMP: 11,
+  PLANT: 12,
+  TROPHY: 13,
 };
 
 export const CROP_STAGES = 4;
@@ -24,6 +29,11 @@ export const BUILDING_COSTS = {
   [TILE.BARRACKS]: { food: 20, metal: 40, energy: 20 },
   [TILE.SOLAR]: { food: 0, metal: 20, energy: 0 },
   [TILE.BED]: { food: 10, metal: 10, energy: 0 },
+  [TILE.CARPET]: { food: 5, metal: 0, energy: 0 },
+  [TILE.TV]: { food: 0, metal: 15, energy: 5 },
+  [TILE.LAMP]: { food: 0, metal: 5, energy: 5 },
+  [TILE.PLANT]: { food: 5, metal: 0, energy: 0 },
+  [TILE.TROPHY]: { food: 0, metal: 20, energy: 0 },
 };
 
 export const WEAPONS = [

@@ -7,6 +7,10 @@ export const DIALOGUES = {
     { speaker: 'player', text: "I'm Batman still!", color: '#66ccff', delay: 0 },
     { speaker: 'enemy', text: "I'm Joker!", color: '#44ff44', delay: 2.5 },
   ],
+  cooking: [
+    { speaker: 'player', text: "I'm cooking!", color: '#ffaa44', delay: 0 },
+    { speaker: 'enemy', text: 'Stop the cap!', color: '#ff4444', delay: 2.5 },
+  ],
 };
 
 export class EncounterCutscene {

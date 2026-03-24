@@ -39,6 +39,7 @@ export class SurfaceView {
     this.encounterCutscene = null;
     this.encounterPlayed = false;
     this.jokerPlayed = false;
+    this.cookingPlayed = false;
     this.victoryCutscene = null;
     this.wonGame = false;
     this.dialogue = null;
@@ -244,7 +245,7 @@ export class SurfaceView {
         return;
       }
       // Demolish buildings — get half resources back
-      if (existing === TILE.FARM || existing === TILE.TURRET || existing === TILE.WALL || existing === TILE.BARRACKS || existing === TILE.SOLAR) {
+      if (existing >= TILE.FARM && existing !== TILE.ROCK && existing !== TILE.WATER) {
         const cost = BUILDING_COSTS[existing];
         if (cost) {
           this.resources.add('food', Math.ceil((cost.food || 0) / 2));
@@ -323,6 +324,11 @@ export class SurfaceView {
       if (!this.jokerPlayed && this.enemies.wave === 5 && prevWave === 4) {
         this.jokerPlayed = true;
         this.encounterCutscene = new EncounterCutscene(this.screenW, this.screenH, 'joker');
+      }
+      // Cooking cutscene at wave 10
+      if (!this.cookingPlayed && this.enemies.wave === 10 && prevWave === 9) {
+        this.cookingPlayed = true;
+        this.encounterCutscene = new EncounterCutscene(this.screenW, this.screenH, 'cooking');
       }
       // Victory at wave 20
       if (!this.wonGame && this.enemies.wave === 20 && prevWave === 19) {
