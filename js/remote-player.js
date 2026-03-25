@@ -47,7 +47,7 @@ export class RemotePlayerPool {
   update(dt) {
     for (const rp of this.pool) {
       if (!rp.active) continue;
-      const lerpSpeed = 10 * dt;
+      const lerpSpeed = 18 * dt;
       rp.x += (rp.targetX - rp.x) * lerpSpeed;
       rp.y += (rp.targetY - rp.y) * lerpSpeed;
     }

@@ -1,5 +1,5 @@
 const PEER_PREFIX = 'pforge-';
-const SYNC_RATE = 1000 / 15;
+const SYNC_RATE = 1000 / 30;
 
 export class Multiplayer {
   constructor() {
@@ -89,7 +89,7 @@ export class Multiplayer {
 
     this.peer.on('open', () => {
       this.peerReady = true;
-      const conn = this.peer.connect(PEER_PREFIX + code, { reliable: true });
+      const conn = this.peer.connect(PEER_PREFIX + code, { reliable: false, serialization: 'json' });
       this.setupConnection(conn);
     });
 
@@ -169,3 +169,5 @@ export class Multiplayer {
 }
 
 export const multiplayer = new Multiplayer();
+
+multiplayer.loadPeer().catch(() => {});
