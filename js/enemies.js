@@ -16,6 +16,7 @@ export class EnemySystem {
     this.wave = 0;
     this.spawnQueue = 0;
     this.spawnCooldown = 0;
+    this.syncedByHost = false;
   }
 
   startWave(wave) {
@@ -54,21 +55,23 @@ export class EnemySystem {
   }
 
   update(dt, player, tileMap, resources, particles) {
-    this.waveTimer -= dt;
-    if (this.waveTimer <= 0 && this.spawnQueue <= 0 && this.activeCount() === 0) {
-      this.wave++;
-      resources.wave = this.wave;
-      this.startWave(this.wave);
-      this.waveTimer = 20 + this.wave * 2;
-    }
+    if (!this.syncedByHost) {
+      this.waveTimer -= dt;
+      if (this.waveTimer <= 0 && this.spawnQueue <= 0 && this.activeCount() === 0) {
+        this.wave++;
+        resources.wave = this.wave;
+        this.startWave(this.wave);
+        this.waveTimer = 20 + this.wave * 2;
+      }
 
-    if (this.spawnQueue > 0) {
-      this.spawnCooldown -= dt;
-      if (this.spawnCooldown <= 0) {
-        const maxType = Math.min(ENEMY_TYPES.length - 1, (this.wave / 3) | 0);
-        this.spawn(Math.random() * (maxType + 1) | 0);
-        this.spawnQueue--;
-        this.spawnCooldown = 0.4;
+      if (this.spawnQueue > 0) {
+        this.spawnCooldown -= dt;
+        if (this.spawnCooldown <= 0) {
+          const maxType = Math.min(ENEMY_TYPES.length - 1, (this.wave / 3) | 0);
+          this.spawn(Math.random() * (maxType + 1) | 0);
+          this.spawnQueue--;
+          this.spawnCooldown = 0.4;
+        }
       }
     }
 

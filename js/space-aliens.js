@@ -22,6 +22,7 @@ export class SpaceAliens {
     this.wave = 0;
     this.waveTimer = 45;
     this.kills = 0;
+    this.syncedByHost = false;
   }
 
   aggroAll() {
@@ -59,17 +60,19 @@ export class SpaceAliens {
   }
 
   update(dt, shipX, shipY, screenW, screenH, bullets, particles) {
-    this.waveTimer -= dt;
-    if (this.waveTimer <= 0) {
-      this.wave++;
-      this.waveTimer = 50 + this.wave * 5;
-    }
+    if (!this.syncedByHost) {
+      this.waveTimer -= dt;
+      if (this.waveTimer <= 0) {
+        this.wave++;
+        this.waveTimer = 50 + this.wave * 5;
+      }
 
-    this.spawnTimer -= dt;
-    const maxAliens = 2 + this.wave;
-    if (this.spawnTimer <= 0 && this.activeCount() < maxAliens) {
-      this.spawn(screenW, screenH);
-      this.spawnTimer = Math.max(5, 12 - this.wave);
+      this.spawnTimer -= dt;
+      const maxAliens = 2 + this.wave;
+      if (this.spawnTimer <= 0 && this.activeCount() < maxAliens) {
+        this.spawn(screenW, screenH);
+        this.spawnTimer = Math.max(5, 12 - this.wave);
+      }
     }
 
     for (const a of this.pool) {

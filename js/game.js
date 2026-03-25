@@ -13,6 +13,7 @@ import { multiplayer } from './multiplayer.js';
 import { RemotePlayerPool } from './remote-player.js';
 import { RemoteShipPool } from './remote-ship.js';
 import { emitParticles } from './space-pools.js';
+import { WorldSync } from './world-sync.js';
 
 const STATE = { TITLE: 0, GALAXY: 1, SURFACE: 2, SPACE: 3, CUTSCENE: 4, DEATH: 5, FUEL: 6, QTE: 7, LOBBY: 8 };
 
@@ -41,6 +42,7 @@ export class Game {
     this.multiplayerActive = false;
     this.newBullets = [];
     this.newSurfaceBullets = [];
+    this.worldSync = new WorldSync();
 
     this.input.onTap = (x, y) => this.handleTap(x, y);
     this.input.onDragStart = (_x, _y) => {};
@@ -189,6 +191,9 @@ export class Game {
     this.state = STATE.SURFACE;
     music.setMode(isHome ? 'surface' : 'battle');
     if (isHome) music.playHomeJingle();
+    if (this.multiplayerActive && !multiplayer.isHost && this.surface.enemies) {
+      this.surface.enemies.syncedByHost = true;
+    }
   }
 
   leaveSurface() {
@@ -256,6 +261,10 @@ export class Game {
       if (data.action === 'start' && this.state === STATE.LOBBY && this.lobby) {
         this.lobby.done = true;
         this.lobby.result = 'client';
+      } else if (data.action === 'world-surface' && this.state === STATE.SURFACE && this.surface) {
+        this.worldSync.applySurface(data, this.surface.enemies);
+      } else if (data.action === 'world-space' && this.state === STATE.SPACE && this.space) {
+        this.worldSync.applySpace(data, this.space);
       }
     };
   }
@@ -265,6 +274,9 @@ export class Game {
     this.lobby = null;
     this.pendingPlanetName = 'Terra Prime';
     this.finishLanding();
+    if (!multiplayer.isHost && this.surface && this.surface.enemies) {
+      this.surface.enemies.syncedByHost = true;
+    }
   }
 
   enterSpace() {
@@ -272,6 +284,9 @@ export class Game {
     this.space.resize(this.width, this.height);
     this.state = STATE.SPACE;
     music.setMode('space');
+    if (this.multiplayerActive && !multiplayer.isHost) {
+      this.space.aliens.syncedByHost = true;
+    }
   }
 
   loop(time) {
@@ -322,6 +337,7 @@ export class Game {
         }
         this.remotePlayers.updateFromStates(multiplayer.remoteStates, this.pendingPlanetName);
         this.remotePlayers.update(dt);
+        if (multiplayer.isHost) this.worldSync.hostSyncSurface(dt, this.surface.enemies);
         const dmg = this.remotePlayers.checkHits(
           this.surface.player.x, this.surface.player.y, this.surface.player.radius,
           this.surface.particles
@@ -347,6 +363,7 @@ export class Game {
         }
         this.remoteShips.updateFromStates(multiplayer.remoteStates, this.galaxy.currentGalaxy);
         this.remoteShips.update(dt);
+        if (multiplayer.isHost) this.worldSync.hostSyncSpace(dt, this.space);
         const dmg = this.remoteShips.checkHits(
           this.space.shipX, this.space.shipY, this.space.shipRadius,
           this.space.particles, emitParticles
