@@ -7,8 +7,9 @@ import { saveHome, loadHome } from './save.js';
 import { LandingCutscene } from './landing-cutscene.js';
 import { DeathCutscene } from './death-cutscene.js';
 import { FuelCutscene } from './fuel-cutscene.js';
+import { QTEPlanet } from './qte-planet.js';
 
-const STATE = { TITLE: 0, GALAXY: 1, SURFACE: 2, SPACE: 3, CUTSCENE: 4, DEATH: 5, FUEL: 6 };
+const STATE = { TITLE: 0, GALAXY: 1, SURFACE: 2, SPACE: 3, CUTSCENE: 4, DEATH: 5, FUEL: 6, QTE: 7 };
 
 export class Game {
   constructor(canvas) {
@@ -20,6 +21,7 @@ export class Game {
     this.galaxy = new GalaxyView();
     this.surface = null;
     this.space = null;
+    this.qte = null;
     this.cameFromSpace = false;
     this.earnedSoldiers = 0;
     this.cutscene = null;
@@ -65,6 +67,11 @@ export class Game {
           if (this.cutscene) { this.cutscene.done = true; this.cutscene = null; this.landAtGasStation(); }
         }
       }
+      return;
+    }
+
+    if (this.state === STATE.QTE) {
+      if (this.qte) this.qte.handleTap(x, y);
       return;
     }
 
@@ -134,6 +141,13 @@ export class Game {
 
   finishLanding() {
     const planetName = this.pendingPlanetName;
+    if (planetName === 'Pixel Arena') {
+      this.qte = new QTEPlanet(this.width, this.height);
+      this.cutscene = null;
+      this.state = STATE.QTE;
+      music.setMode('battle');
+      return;
+    }
     const isHome = planetName === 'Terra Prime';
     const isGas = planetName === 'Gas Station';
     this.surface = new SurfaceView(isHome || isGas);
@@ -233,6 +247,7 @@ export class Game {
 
   update(dt) {
     const move = this.input.getMoveVector();
+    if (this.state !== STATE.QTE) this.input.yPressed = false;
     if (this.state === STATE.GALAXY) {
       this.galaxy.update(dt);
     } else if (this.state === STATE.SURFACE) {
@@ -306,6 +321,23 @@ export class Game {
         this.state = STATE.FUEL;
         music.setMode('galaxy');
       }
+    } else if (this.state === STATE.QTE) {
+      if (this.qte) {
+        if (this.input.yPressed) {
+          this.input.yPressed = false;
+          this.qte.pressY();
+        }
+        this.qte.update(dt);
+        if (this.qte.done) {
+          const won = this.qte.won;
+          this.qte = null;
+          if (won) {
+            this.respawnHome();
+          } else {
+            this.startDeathCutscene();
+          }
+        }
+      }
     } else if (this.state === STATE.FUEL) {
       if (this.cutscene) {
         this.cutscene.update(dt);
@@ -326,6 +358,8 @@ export class Game {
       this.galaxy.render(ctx, this.width, this.height);
     } else if (this.state === STATE.CUTSCENE || this.state === STATE.DEATH) {
       if (this.cutscene) this.cutscene.render(ctx);
+    } else if (this.state === STATE.QTE) {
+      if (this.qte) this.qte.render(ctx);
     } else if (this.state === STATE.SURFACE) {
       this.surface.render(ctx);
       this.renderBackButton(ctx);

@@ -38,6 +38,7 @@ export class GalaxyView {
     this.addGalaxy();
     this.addPlanetTo(1, 'Zyphor Prime');
     this.addPlanetTo(1, 'Red Dwarf Station');
+    this.addPlanetTo(1, 'Pixel Arena');
   }
 
   addGalaxy() {

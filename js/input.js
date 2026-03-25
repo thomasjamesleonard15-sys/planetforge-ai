@@ -5,16 +5,20 @@ export class InputHandler {
     this.onDragStart = null;
     this.onDrag = null;
     this.onDragEnd = null;
+    this.onSecondTap = null;
     this.keys = new Set();
-    this.primaryTouch = null;
+    this.joystickTouchId = null;
+    this.actionTouchId = null;
     this.mouseX = 0;
     this.mouseY = 0;
     this.spaceDown = false;
     this.enterPressed = false;
+    this.yPressed = false;
 
     canvas.addEventListener('touchstart', (e) => this.handleTouchStart(e), { passive: false });
     canvas.addEventListener('touchmove', (e) => this.handleTouchMove(e), { passive: false });
     canvas.addEventListener('touchend', (e) => this.handleTouchEnd(e));
+    canvas.addEventListener('touchcancel', (e) => this.handleTouchEnd(e));
     canvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
     window.addEventListener('mousemove', (e) => this.handleMouseMove(e));
     canvas.addEventListener('mouseup', (e) => this.handleMouseUp(e));
@@ -22,6 +26,7 @@ export class InputHandler {
       const isSpace = e.key === ' ' || e.code === 'Space';
       if (isSpace) { e.preventDefault(); this.spaceDown = true; }
       if (e.key === 'Enter') this.enterPressed = true;
+      if (e.key === 'y' || e.key === 'Y') this.yPressed = true;
       this.keys.add(e.key.toLowerCase());
     });
     window.addEventListener('keyup', (e) => {
@@ -41,17 +46,28 @@ export class InputHandler {
 
   handleTouchStart(e) {
     e.preventDefault();
-    const t = e.changedTouches[0];
-    const pos = this.getPos(t.clientX, t.clientY);
-    this.primaryTouch = t.identifier;
-    if (this.onDragStart) this.onDragStart(pos.x, pos.y);
-    if (this.onTap) this.onTap(pos.x, pos.y);
+    for (const t of e.changedTouches) {
+      const pos = this.getPos(t.clientX, t.clientY);
+      const isLeftSide = pos.x < this.canvas.width * 0.4;
+
+      if (isLeftSide && this.joystickTouchId === null) {
+        this.joystickTouchId = t.identifier;
+        if (this.onDragStart) this.onDragStart(pos.x, pos.y);
+        if (this.onTap) this.onTap(pos.x, pos.y);
+      } else if (this.actionTouchId === null) {
+        this.actionTouchId = t.identifier;
+        if (this.onTap) this.onTap(pos.x, pos.y);
+        if (this.onSecondTap) this.onSecondTap(pos.x, pos.y);
+      } else {
+        if (this.onTap) this.onTap(pos.x, pos.y);
+      }
+    }
   }
 
   handleTouchMove(e) {
     e.preventDefault();
     for (const t of e.changedTouches) {
-      if (t.identifier === this.primaryTouch) {
+      if (t.identifier === this.joystickTouchId) {
         const pos = this.getPos(t.clientX, t.clientY);
         if (this.onDrag) this.onDrag(pos.x, pos.y);
       }
@@ -60,9 +76,12 @@ export class InputHandler {
 
   handleTouchEnd(e) {
     for (const t of e.changedTouches) {
-      if (t.identifier === this.primaryTouch) {
-        this.primaryTouch = null;
+      if (t.identifier === this.joystickTouchId) {
+        this.joystickTouchId = null;
         if (this.onDragEnd) this.onDragEnd();
+      }
+      if (t.identifier === this.actionTouchId) {
+        this.actionTouchId = null;
       }
     }
   }
