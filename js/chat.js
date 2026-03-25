@@ -305,13 +305,13 @@ export class Chat {
         const bsW = 40;
         const bsX = px + pw - 8 - bsW;
         this.backspaceRect = { x: bsX, y: ky, w: bsW, h: kh };
-        ctx.fillStyle = '#442222';
+        ctx.fillStyle = '#4a3020';
         ctx.beginPath();
         ctx.roundRect(bsX, ky, bsW, kh, 6);
         ctx.fill();
-        ctx.strokeStyle = '#664444';
+        ctx.strokeStyle = '#6a5030';
         ctx.stroke();
-        ctx.fillStyle = '#ff8888';
+        ctx.fillStyle = '#ddaa77';
         ctx.font = '14px -apple-system, system-ui, sans-serif';
         ctx.fillText('⌫', bsX + bsW / 2, ky + kh / 2 + 5);
       }
