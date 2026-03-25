@@ -49,6 +49,8 @@ export class RacingGame {
       this.particles.push({ x: 0, y: 0, vx: 0, vy: 0, life: 0, maxLife: 0, r: 0, color: '' });
     }
 
+    this.homeBtnRect = { x: 0, y: 0, w: 0, h: 0 };
+    this.score = 0;
     this.stars = [];
     for (let i = 0; i < 120; i++) {
       this.stars.push({
@@ -61,6 +63,14 @@ export class RacingGame {
   }
 
   handleTap(sx, sy) {
+    if (this.phase === 'finished') {
+      const b = this.homeBtnRect;
+      if (sx >= b.x && sx <= b.x + b.w && sy >= b.y && sy <= b.y + b.h) {
+        this.done = true;
+        this.won = true;
+      }
+      return;
+    }
     if (sx < this.screenW * 0.4) {
       this.joystickActive = true;
       this.joyOX = sx; this.joyOY = sy;
@@ -115,7 +125,6 @@ export class RacingGame {
     }
 
     if (this.phase === 'finished') {
-      if (this.timer > 3) { this.done = true; this.won = true; }
       return;
     }
 
@@ -173,6 +182,10 @@ export class RacingGame {
       this.phase = 'finished';
       this.timer = 0;
       this.bestTime = this.raceTime;
+      const timeBonus = Math.max(0, Math.floor((60 - this.raceTime) * 100));
+      const ringBonus = this.ringsHit * 500;
+      const missedPenalty = (this.totalRings - this.ringsHit) * 200;
+      this.score = Math.max(0, timeBonus + ringBonus - missedPenalty);
       try {
         const u = new SpeechSynthesisUtterance("Race complete!");
         u.pitch = 0.3; u.rate = 0.7;
@@ -284,17 +297,42 @@ export class RacingGame {
     }
 
     if (this.phase === 'finished') {
-      ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      ctx.fillRect(0, h * 0.3, w, h * 0.3);
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.fillRect(0, h * 0.2, w, h * 0.55);
+
       ctx.font = 'bold 32px -apple-system, system-ui, sans-serif';
       ctx.fillStyle = '#44ff88';
-      ctx.fillText('RACE COMPLETE!', w / 2, h * 0.42);
-      ctx.font = '20px -apple-system, system-ui, sans-serif';
+      ctx.fillText('RACE COMPLETE!', w / 2, h * 0.30);
+
+      ctx.font = 'bold 48px -apple-system, system-ui, sans-serif';
+      ctx.fillStyle = '#ffdd44';
+      ctx.fillText(String(this.score), w / 2, h * 0.40);
+      ctx.font = '14px -apple-system, system-ui, sans-serif';
+      ctx.fillStyle = '#aaaacc';
+      ctx.fillText('SCORE', w / 2, h * 0.43);
+
+      ctx.font = '18px -apple-system, system-ui, sans-serif';
       ctx.fillStyle = '#ffaa44';
       ctx.fillText(`Time: ${this.bestTime.toFixed(2)}s`, w / 2, h * 0.50);
-      ctx.fillStyle = '#aaaacc';
-      ctx.font = '16px -apple-system, system-ui, sans-serif';
-      ctx.fillText(`Rings: ${this.ringsHit}/${this.totalRings}`, w / 2, h * 0.56);
+      ctx.fillStyle = '#44ff88';
+      ctx.fillText(`Rings: ${this.ringsHit}/${this.totalRings}`, w / 2, h * 0.55);
+
+      const missed = this.totalRings - this.ringsHit;
+      if (missed > 0) {
+        ctx.fillStyle = '#ff6666';
+        ctx.fillText(`Missed: ${missed} (-${missed * 200} pts)`, w / 2, h * 0.60);
+      }
+
+      const bw = 180, bh = 48;
+      const bx = w / 2 - bw / 2, by = h * 0.65;
+      this.homeBtnRect = { x: bx, y: by, w: bw, h: bh };
+      ctx.fillStyle = '#22cc44';
+      ctx.beginPath();
+      ctx.roundRect(bx, by, bw, bh, 10);
+      ctx.fill();
+      ctx.font = 'bold 18px -apple-system, system-ui, sans-serif';
+      ctx.fillStyle = '#fff';
+      ctx.fillText('Return Home', w / 2, by + bh / 2 + 6);
     }
 
     if (this.joystickActive) {
