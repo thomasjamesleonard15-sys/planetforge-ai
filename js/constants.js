@@ -1,5 +1,5 @@
 export const TILE_SIZE = 48;
-export const MAP_SIZE = 40;
+export const MAP_SIZE = 80;
 
 export const TILE = {
   EMPTY: 0,
