@@ -1,5 +1,5 @@
-const TRACK_LENGTH = 20;
-const RING_SPACING = 400;
+const TRACK_LENGTH = 10;
+const RING_SPACING = 300;
 const SHIP_ACCEL = 600;
 const SHIP_MAX_SPEED = 500;
 const SHIP_DRAG = 0.985;
@@ -63,14 +63,13 @@ export class RacingGame {
   }
 
   handleTap(sx, sy) {
-    if (this.phase === 'finished') {
-      const b = this.homeBtnRect;
-      if (sx >= b.x && sx <= b.x + b.w && sy >= b.y && sy <= b.y + b.h) {
-        this.done = true;
-        this.won = true;
-      }
+    const b = this.homeBtnRect;
+    if (b.w > 0 && sx >= b.x && sx <= b.x + b.w && sy >= b.y && sy <= b.y + b.h) {
+      this.done = true;
+      this.won = true;
       return;
     }
+    if (this.phase === 'finished') return;
     if (sx < this.screenW * 0.4) {
       this.joystickActive = true;
       this.joyOX = sx; this.joyOY = sy;
@@ -160,7 +159,7 @@ export class RacingGame {
       const dx = this.shipX - ring.x;
       const dy = (this.shipY - this.cameraY) - ry;
       const screenDy = this.shipY - ring.y;
-      if (Math.abs(screenDy) < 30 && Math.abs(dx) < ring.radius) {
+      if (Math.abs(screenDy) < 60 && Math.abs(dx) < ring.radius * 1.3) {
         ring.passed = true;
         this.ringsHit++;
         this.boost = Math.max(this.boost, 0.3);
@@ -296,43 +295,62 @@ export class RacingGame {
       ctx.fillText(num > 0 ? String(num) : 'GO!', w / 2, h / 2);
     }
 
+    // Home button — always visible
+    if (this.phase !== 'finished') {
+      const hbw = 80, hbh = 36;
+      const hbx = 12, hby = 12;
+      this.homeBtnRect = { x: hbx, y: hby, w: hbw, h: hbh };
+      ctx.fillStyle = 'rgba(20, 20, 40, 0.8)';
+      ctx.beginPath();
+      ctx.roundRect(hbx, hby, hbw, hbh, 8);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(100, 120, 255, 0.3)';
+      ctx.stroke();
+      ctx.fillStyle = '#aab';
+      ctx.font = '14px -apple-system, system-ui, sans-serif';
+      ctx.fillText('← Home', hbx + hbw / 2, hby + hbh / 2 + 5);
+    }
+
     if (this.phase === 'finished') {
       ctx.fillStyle = 'rgba(0,0,0,0.7)';
-      ctx.fillRect(0, h * 0.2, w, h * 0.55);
+      ctx.fillRect(0, h * 0.15, w, h * 0.65);
 
       ctx.font = 'bold 32px -apple-system, system-ui, sans-serif';
       ctx.fillStyle = '#44ff88';
-      ctx.fillText('RACE COMPLETE!', w / 2, h * 0.30);
+      ctx.fillText('RACE COMPLETE!', w / 2, h * 0.25);
 
-      ctx.font = 'bold 48px -apple-system, system-ui, sans-serif';
+      ctx.font = 'bold 52px -apple-system, system-ui, sans-serif';
       ctx.fillStyle = '#ffdd44';
-      ctx.fillText(String(this.score), w / 2, h * 0.40);
+      ctx.fillText(String(this.score), w / 2, h * 0.36);
       ctx.font = '14px -apple-system, system-ui, sans-serif';
       ctx.fillStyle = '#aaaacc';
-      ctx.fillText('SCORE', w / 2, h * 0.43);
+      ctx.fillText('SCORE', w / 2, h * 0.39);
 
       ctx.font = '18px -apple-system, system-ui, sans-serif';
       ctx.fillStyle = '#ffaa44';
-      ctx.fillText(`Time: ${this.bestTime.toFixed(2)}s`, w / 2, h * 0.50);
+      ctx.fillText(`Time: ${this.bestTime.toFixed(2)}s`, w / 2, h * 0.46);
       ctx.fillStyle = '#44ff88';
-      ctx.fillText(`Rings: ${this.ringsHit}/${this.totalRings}`, w / 2, h * 0.55);
+      ctx.fillText(`Rings: ${this.ringsHit}/${this.totalRings}`, w / 2, h * 0.51);
 
       const missed = this.totalRings - this.ringsHit;
       if (missed > 0) {
         ctx.fillStyle = '#ff6666';
-        ctx.fillText(`Missed: ${missed} (-${missed * 200} pts)`, w / 2, h * 0.60);
+        ctx.fillText(`Missed: ${missed} (-${missed * 200} pts)`, w / 2, h * 0.56);
       }
 
-      const bw = 180, bh = 48;
-      const bx = w / 2 - bw / 2, by = h * 0.65;
+      const bw = 220, bh = 56;
+      const bx = w / 2 - bw / 2, by = h * 0.62;
       this.homeBtnRect = { x: bx, y: by, w: bw, h: bh };
       ctx.fillStyle = '#22cc44';
       ctx.beginPath();
-      ctx.roundRect(bx, by, bw, bh, 10);
+      ctx.roundRect(bx, by, bw, bh, 12);
       ctx.fill();
-      ctx.font = 'bold 18px -apple-system, system-ui, sans-serif';
+      ctx.strokeStyle = '#66ff88';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.font = 'bold 20px -apple-system, system-ui, sans-serif';
       ctx.fillStyle = '#fff';
-      ctx.fillText('Return Home', w / 2, by + bh / 2 + 6);
+      ctx.fillText('Return Home', w / 2, by + bh / 2 + 7);
     }
 
     if (this.joystickActive) {
