@@ -247,17 +247,19 @@ export class Game {
   enterLobby() {
     this.lobby = new Lobby();
     this.state = STATE.LOBBY;
+    multiplayer.onHostState = (data) => {
+      if (data.action === 'start' && this.state === STATE.LOBBY && this.lobby) {
+        this.lobby.done = true;
+        this.lobby.result = 'client';
+      }
+    };
   }
 
   startMultiplayerGame() {
     this.multiplayerActive = true;
-    multiplayer.onHostState = (data) => {
-      if (data.action === 'start') {
-        this.enterSurface();
-      }
-    };
-    this.state = STATE.GALAXY;
     this.lobby = null;
+    this.pendingPlanetName = 'Terra Prime';
+    this.finishLanding();
   }
 
   enterSpace() {
@@ -289,11 +291,11 @@ export class Game {
             this.multiplayerActive = false;
             this.state = STATE.GALAXY;
             this.lobby = null;
+          } else if (this.lobby.result === 'host') {
+            multiplayer.broadcastHostState({ action: 'start' });
+            this.startMultiplayerGame();
           } else {
             this.startMultiplayerGame();
-            if (this.lobby && this.lobby.result === 'host') {
-              multiplayer.broadcastHostState({ action: 'start' });
-            }
           }
         }
       }
