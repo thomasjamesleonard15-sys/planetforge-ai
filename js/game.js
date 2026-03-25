@@ -15,8 +15,10 @@ import { RemoteShipPool } from './remote-ship.js';
 import { emitParticles } from './space-pools.js';
 import { WorldSync } from './world-sync.js';
 import { BlackHoleCutscene } from './blackhole-cutscene.js';
+import { ArcadeMenu } from './arcade-menu.js';
+import { RacingGame } from './racing-game.js';
 
-const STATE = { TITLE: 0, GALAXY: 1, SURFACE: 2, SPACE: 3, CUTSCENE: 4, DEATH: 5, FUEL: 6, QTE: 7, LOBBY: 8, BLACKHOLE: 9 };
+const STATE = { TITLE: 0, GALAXY: 1, SURFACE: 2, SPACE: 3, CUTSCENE: 4, DEATH: 5, FUEL: 6, QTE: 7, LOBBY: 8, BLACKHOLE: 9, ARCADE: 10, RACE: 11 };
 
 export class Game {
   constructor(canvas) {
@@ -29,6 +31,8 @@ export class Game {
     this.surface = null;
     this.space = null;
     this.qte = null;
+    this.arcade = null;
+    this.race = null;
     this.cameFromSpace = false;
     this.earnedSoldiers = 0;
     this.cutscene = null;
@@ -92,6 +96,16 @@ export class Game {
       return;
     }
 
+    if (this.state === STATE.ARCADE) {
+      if (this.arcade) this.arcade.handleTap(x, y);
+      return;
+    }
+
+    if (this.state === STATE.RACE) {
+      if (this.race) this.race.handleTap(x, y);
+      return;
+    }
+
     if (this.state === STATE.LOBBY) {
       if (this.lobby) this.lobby.handleTap(x, y);
       return;
@@ -137,6 +151,8 @@ export class Game {
       this.surface.handleTouchMove(x, y);
     } else if (this.state === STATE.SPACE) {
       this.space.handleTouchMove(x, y);
+    } else if (this.state === STATE.RACE && this.race) {
+      this.race.handleMove(x, y);
     }
   }
 
@@ -145,6 +161,8 @@ export class Game {
       this.surface.handleTouchEnd();
     } else if (this.state === STATE.SPACE) {
       this.space.handleTouchEnd();
+    } else if (this.state === STATE.RACE && this.race) {
+      this.race.handleEnd();
     }
   }
 
@@ -165,10 +183,9 @@ export class Game {
   finishLanding() {
     const planetName = this.pendingPlanetName;
     if (planetName === 'Pixel Arena') {
-      this.qte = new QTEPlanet(this.width, this.height);
+      this.arcade = new ArcadeMenu(this.width, this.height);
       this.cutscene = null;
-      this.state = STATE.QTE;
-      music.setMode('battle');
+      this.state = STATE.ARCADE;
       return;
     }
     const isHome = planetName === 'Terra Prime';
@@ -500,6 +517,34 @@ export class Game {
           }
         }
       }
+    } else if (this.state === STATE.ARCADE) {
+      if (this.arcade) {
+        this.arcade.update(dt);
+        if (this.arcade.done) {
+          const choice = this.arcade.choice;
+          this.arcade = null;
+          if (choice === 'qte') {
+            this.qte = new QTEPlanet(this.width, this.height);
+            this.state = STATE.QTE;
+            music.setMode('battle');
+          } else if (choice === 'race') {
+            this.race = new RacingGame(this.width, this.height);
+            this.state = STATE.RACE;
+            music.setMode('space');
+          } else {
+            this.state = STATE.GALAXY;
+            music.setMode('galaxy');
+          }
+        }
+      }
+    } else if (this.state === STATE.RACE) {
+      if (this.race) {
+        this.race.update(dt, move.x, move.y);
+        if (this.race.done) {
+          this.race = null;
+          this.respawnHome();
+        }
+      }
     } else if (this.state === STATE.FUEL) {
       if (this.cutscene) {
         this.cutscene.update(dt);
@@ -527,6 +572,10 @@ export class Game {
       if (this.cutscene) this.cutscene.render(ctx);
     } else if (this.state === STATE.CUTSCENE || this.state === STATE.DEATH) {
       if (this.cutscene) this.cutscene.render(ctx);
+    } else if (this.state === STATE.ARCADE) {
+      if (this.arcade) this.arcade.render(ctx);
+    } else if (this.state === STATE.RACE) {
+      if (this.race) this.race.render(ctx);
     } else if (this.state === STATE.QTE) {
       if (this.qte) this.qte.render(ctx);
     } else if (this.state === STATE.SURFACE) {
