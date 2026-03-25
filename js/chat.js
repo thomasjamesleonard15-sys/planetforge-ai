@@ -140,7 +140,7 @@ export class Chat {
       for (let i = recentMsgs.length - 1; i >= 0; i--) {
         const m = recentMsgs[i];
         ctx.globalAlpha = Math.min(1, m.time / 2);
-        ctx.font = '12px -apple-system, system-ui, sans-serif';
+        ctx.font = '16px -apple-system, system-ui, sans-serif';
         const tw = ctx.measureText(`${m.name}: ${m.text}`).width + 16;
         ctx.fillStyle = 'rgba(0,0,0,0.6)';
         ctx.beginPath();
@@ -197,7 +197,7 @@ export class Chat {
 
     const visible = this.messages.slice(-4);
     let my = msgY + 16;
-    ctx.font = '11px -apple-system, system-ui, sans-serif';
+    ctx.font = '14px -apple-system, system-ui, sans-serif';
     for (const m of visible) {
       ctx.fillStyle = '#ffaa44';
       ctx.fillText(`${m.name}:`, px + 14, my);
