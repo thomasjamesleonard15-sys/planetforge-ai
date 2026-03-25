@@ -17,6 +17,7 @@ import { WorldSync } from './world-sync.js';
 import { BlackHoleCutscene } from './blackhole-cutscene.js';
 import { ArcadeMenu } from './arcade-menu.js';
 import { Chat } from './chat.js';
+import { IntroCutscene } from './intro-cutscene.js';
 import { RacingGame } from './racing-game.js';
 
 const STATE = { TITLE: 0, GALAXY: 1, SURFACE: 2, SPACE: 3, CUTSCENE: 4, DEATH: 5, FUEL: 6, QTE: 7, LOBBY: 8, BLACKHOLE: 9, ARCADE: 10, RACE: 11 };
@@ -50,6 +51,7 @@ export class Game {
     this.newSurfaceBullets = [];
     this.worldSync = new WorldSync();
     this.chat = new Chat();
+    this.intro = null;
 
     this.input.onTap = (x, y) => this.handleTap(x, y);
     this.input.onDragStart = (_x, _y) => {};
@@ -62,11 +64,10 @@ export class Game {
   }
 
   start() {
-    this.state = STATE.GALAXY;
+    this.intro = new IntroCutscene(this.width, this.height);
+    this.state = STATE.TITLE;
     this.running = true;
     this.lastTime = performance.now();
-    music.start();
-    music.setMode('galaxy');
     requestAnimationFrame((t) => this.loop(t));
   }
 
@@ -78,6 +79,11 @@ export class Game {
   }
 
   handleTap(x, y) {
+    if (this.state === STATE.TITLE && this.intro) {
+      this.intro.handleTap();
+      return;
+    }
+
     if (this.multiplayerActive && this.chat.handleTap(x, y)) return;
 
     // Skip cutscenes — only via skip button (bottom-right)
@@ -328,6 +334,19 @@ export class Game {
     const move = this.input.getMoveVector();
     if (this.state !== STATE.QTE) this.input.yPressed = false;
 
+    if (this.state === STATE.TITLE) {
+      if (this.intro) {
+        this.intro.update(dt);
+        if (this.intro.done) {
+          this.intro = null;
+          this.state = STATE.GALAXY;
+          music.start();
+          music.setMode('galaxy');
+        }
+      }
+      return;
+    }
+
     if (this.state === STATE.LOBBY) {
       if (this.lobby) {
         this.lobby.update(dt);
@@ -568,6 +587,11 @@ export class Game {
   render() {
     const ctx = this.ctx;
     ctx.clearRect(0, 0, this.width, this.height);
+
+    if (this.state === STATE.TITLE) {
+      if (this.intro) this.intro.render(ctx);
+      return;
+    }
 
     if (this.state === STATE.LOBBY) {
       if (this.lobby) this.lobby.render(ctx, this.width, this.height);
