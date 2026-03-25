@@ -98,7 +98,7 @@ export class Chat {
 
   render(ctx, w, h) {
     const btnSize = 40;
-    const bx = w - btnSize - 16, by = h - btnSize - 150;
+    const bx = 12, by = h - btnSize - 16;
     this.chatBtnRect = { x: bx, y: by, w: btnSize, h: btnSize };
     ctx.fillStyle = this.inputActive ? 'rgba(60, 40, 100, 0.9)' : 'rgba(30, 20, 50, 0.8)';
     ctx.beginPath();
