@@ -33,6 +33,9 @@ export class SpaceView {
     this.stars = []; this.spawnTimer = 0;
     this.joystickActive = false;
     this.joystickOX = 0; this.joystickOY = 0; this.joyX = 0; this.joyY = 0;
+    this.blackHole = null;
+    this.blackHoleCheck = 0;
+    this.blackHoleEvent = false;
   }
 
   initPlanets(galaxyPlanets) {
@@ -269,6 +272,50 @@ export class SpaceView {
     this.portal.rot += dt * 2;
     const pdx = this.shipX - this.portal.x, pdy = this.shipY - this.portal.y;
     this.nearPortal = Math.sqrt(pdx * pdx + pdy * pdy) < this.portal.radius * 2;
+
+    // Black hole 1% event
+    if (!this.blackHole && !this.blackHoleEvent) {
+      this.blackHoleCheck += dt;
+      if (this.blackHoleCheck >= 1) {
+        this.blackHoleCheck = 0;
+        if (Math.random() < 0.01) {
+          this.blackHole = {
+            x: this.screenW * (0.2 + Math.random() * 0.6),
+            y: this.screenH * (0.2 + Math.random() * 0.6),
+            radius: 0, maxRadius: 80, rot: 0, timer: 0, phase: 'grow',
+          };
+        }
+      }
+    }
+    if (this.blackHole) {
+      const bh = this.blackHole;
+      bh.timer += dt;
+      bh.rot += dt * 4;
+      if (bh.phase === 'grow') {
+        bh.radius = Math.min(bh.maxRadius, bh.radius + dt * 60);
+        if (bh.radius >= bh.maxRadius) bh.phase = 'pull';
+      }
+      if (bh.phase === 'pull') {
+        const dx = bh.x - this.shipX, dy = bh.y - this.shipY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > 5) {
+          const pull = 400 / Math.max(dist, 50);
+          this.shipVX += (dx / dist) * pull * dt * 60;
+          this.shipVY += (dy / dist) * pull * dt * 60;
+        }
+        if (dist < bh.radius * 0.5) {
+          bh.phase = 'swallow';
+          bh.timer = 0;
+        }
+        emitParticles(this.particles, bh.x + (Math.random() - 0.5) * bh.radius, bh.y + (Math.random() - 0.5) * bh.radius, 1, 0, 0.4, '#8844ff', 60, 3);
+      }
+      if (bh.phase === 'swallow') {
+        if (bh.timer > 1) {
+          this.blackHoleEvent = true;
+          this.blackHole = null;
+        }
+      }
+    }
 
     this.checkCollisions();
   }

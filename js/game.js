@@ -14,8 +14,9 @@ import { RemotePlayerPool } from './remote-player.js';
 import { RemoteShipPool } from './remote-ship.js';
 import { emitParticles } from './space-pools.js';
 import { WorldSync } from './world-sync.js';
+import { BlackHoleCutscene } from './blackhole-cutscene.js';
 
-const STATE = { TITLE: 0, GALAXY: 1, SURFACE: 2, SPACE: 3, CUTSCENE: 4, DEATH: 5, FUEL: 6, QTE: 7, LOBBY: 8 };
+const STATE = { TITLE: 0, GALAXY: 1, SURFACE: 2, SPACE: 3, CUTSCENE: 4, DEATH: 5, FUEL: 6, QTE: 7, LOBBY: 8, BLACKHOLE: 9 };
 
 export class Game {
   constructor(canvas) {
@@ -466,6 +467,22 @@ export class Game {
         this.state = STATE.FUEL;
         music.setMode('galaxy');
       }
+      // Black hole event
+      if (this.space.blackHoleEvent) {
+        this.space.blackHoleEvent = false;
+        this.cutscene = new BlackHoleCutscene(this.width, this.height);
+        this.state = STATE.BLACKHOLE;
+        this.space = null;
+        music.setMode('battle');
+      }
+    } else if (this.state === STATE.BLACKHOLE) {
+      if (this.cutscene) {
+        this.cutscene.update(dt);
+        if (this.cutscene.done) {
+          this.cutscene = null;
+          this.respawnHome();
+        }
+      }
     } else if (this.state === STATE.QTE) {
       if (this.qte) {
         if (this.input.yPressed) {
@@ -506,6 +523,8 @@ export class Game {
     if (this.state === STATE.GALAXY) {
       this.renderStars(ctx);
       this.galaxy.render(ctx, this.width, this.height);
+    } else if (this.state === STATE.BLACKHOLE) {
+      if (this.cutscene) this.cutscene.render(ctx);
     } else if (this.state === STATE.CUTSCENE || this.state === STATE.DEATH) {
       if (this.cutscene) this.cutscene.render(ctx);
     } else if (this.state === STATE.QTE) {

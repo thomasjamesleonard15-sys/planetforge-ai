@@ -92,6 +92,43 @@ export function renderSpaceWorld(ctx, view) {
   }
   ctx.textAlign = 'left';
 
+  // Black hole
+  if (view.blackHole) {
+    const bh = view.blackHole;
+    ctx.save();
+    ctx.translate(bh.x, bh.y);
+    const outerGlow = ctx.createRadialGradient(0, 0, bh.radius * 0.2, 0, 0, bh.radius * 2);
+    outerGlow.addColorStop(0, 'rgba(40, 0, 80, 0.9)');
+    outerGlow.addColorStop(0.4, 'rgba(80, 20, 160, 0.4)');
+    outerGlow.addColorStop(1, 'rgba(60, 0, 120, 0)');
+    ctx.fillStyle = outerGlow;
+    ctx.beginPath();
+    ctx.arc(0, 0, bh.radius * 2, 0, Math.PI * 2);
+    ctx.fill();
+    for (let r = 0; r < 6; r++) {
+      ctx.beginPath();
+      const ringR = bh.radius * (0.3 + r * 0.15);
+      const startA = bh.rot * (1 + r * 0.3) + r * 1.2;
+      ctx.arc(0, 0, ringR, startA, startA + Math.PI * 1.5);
+      ctx.strokeStyle = `rgba(${120 + r * 20}, ${40 + r * 15}, 255, ${0.7 - r * 0.08})`;
+      ctx.lineWidth = 3 - r * 0.3;
+      ctx.stroke();
+    }
+    const core = ctx.createRadialGradient(0, 0, 0, 0, 0, bh.radius * 0.3);
+    core.addColorStop(0, '#000000');
+    core.addColorStop(1, 'rgba(20, 0, 40, 0.8)');
+    ctx.fillStyle = core;
+    ctx.beginPath();
+    ctx.arc(0, 0, bh.radius * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    ctx.font = 'bold 14px -apple-system, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#cc66ff';
+    ctx.fillText('??? BLACK HOLE ???', bh.x, bh.y + bh.radius + 20);
+    ctx.textAlign = 'left';
+  }
+
   // Asteroids
   for (const a of view.asteroids) {
     if (!a.active) continue;
