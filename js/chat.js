@@ -302,25 +302,14 @@ export class Chat {
         ctx.font = '14px -apple-system, system-ui, sans-serif';
         ctx.fillText('⇧', shX + shW / 2, ky + kh / 2 + 5);
 
-        const bsW = 40;
-        const bsX = px + pw - 8 - bsW;
-        this.backspaceRect = { x: bsX, y: ky, w: bsW, h: kh };
-        ctx.fillStyle = '#4a3020';
-        ctx.beginPath();
-        ctx.roundRect(bsX, ky, bsW, kh, 6);
-        ctx.fill();
-        ctx.strokeStyle = '#6a5030';
-        ctx.stroke();
-        ctx.fillStyle = '#ddaa77';
-        ctx.font = '14px -apple-system, system-ui, sans-serif';
-        ctx.fillText('⌫', bsX + bsW / 2, ky + kh / 2 + 5);
       }
     }
 
-    // Space bar
+    // Space bar + backspace row
     const spY = startY + 3 * (kh + gap);
+    const bsW = pw * 0.2;
     const spW = pw * 0.5, spH = kh;
-    const spX = px + pw / 2 - spW / 2;
+    const spX = px + 8;
     this.spaceRect = { x: spX, y: spY, w: spW, h: spH };
     ctx.fillStyle = '#222244';
     ctx.beginPath();
@@ -332,5 +321,17 @@ export class Chat {
     ctx.fillStyle = '#888';
     ctx.font = '13px -apple-system, system-ui, sans-serif';
     ctx.fillText('space', spX + spW / 2, spY + spH / 2 + 5);
+
+    const bsX = px + pw - 8 - bsW;
+    this.backspaceRect = { x: bsX, y: spY, w: bsW, h: spH };
+    ctx.fillStyle = '#4a3020';
+    ctx.beginPath();
+    ctx.roundRect(bsX, spY, bsW, spH, 6);
+    ctx.fill();
+    ctx.strokeStyle = '#6a5030';
+    ctx.stroke();
+    ctx.fillStyle = '#ddaa77';
+    ctx.font = 'bold 16px -apple-system, system-ui, sans-serif';
+    ctx.fillText('⌫ delete', bsX + bsW / 2, spY + spH / 2 + 6);
   }
 }
