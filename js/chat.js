@@ -160,7 +160,7 @@ export class Chat {
   }
 
   renderPanel(ctx, w, h) {
-    const pw = Math.min(380, w - 20), ph = h * 0.85;
+    const pw = Math.min(500, w - 16), ph = h * 0.92;
     const px = w / 2 - pw / 2, py = h - ph - 10;
 
     ctx.fillStyle = 'rgba(10, 5, 20, 0.97)';
@@ -261,7 +261,7 @@ export class Chat {
   renderKeyboard(ctx, px, pw, startY) {
     this.keyRects = [];
     const gap = 4;
-    const kh = 36;
+    const kh = 44;
 
     for (let r = 0; r < KB_ROWS.length; r++) {
       const row = KB_ROWS[r];
@@ -283,8 +283,8 @@ export class Chat {
         ctx.stroke();
         ctx.textAlign = 'center';
         ctx.fillStyle = '#ddd';
-        ctx.font = 'bold 16px -apple-system, system-ui, sans-serif';
-        ctx.fillText(this.shiftOn ? ch.toUpperCase() : ch, kx + kw / 2, ky + kh / 2 + 6);
+        ctx.font = 'bold 20px -apple-system, system-ui, sans-serif';
+        ctx.fillText(this.shiftOn ? ch.toUpperCase() : ch, kx + kw / 2, ky + kh / 2 + 7);
       }
 
       // Shift on row 2, backspace on row 2
