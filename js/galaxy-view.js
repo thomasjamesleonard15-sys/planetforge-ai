@@ -26,6 +26,7 @@ export class GalaxyView {
     this.flyButtonRect = { x: 0, y: 0, w: 0, h: 0 };
     this.warpLeftRect = { x: 0, y: 0, w: 0, h: 0 };
     this.warpRightRect = { x: 0, y: 0, w: 0, h: 0 };
+    this.multiplayerRect = { x: 0, y: 0, w: 0, h: 0 };
     this.time = 0;
     this.warpAnim = 0;
 
@@ -118,6 +119,12 @@ export class GalaxyView {
     const fb = this.flyButtonRect;
     if (sx >= fb.x && sx <= fb.x + fb.w && sy >= fb.y && sy <= fb.y + fb.h) {
       return 'fly';
+    }
+
+    // Multiplayer button
+    const mb = this.multiplayerRect;
+    if (sx >= mb.x && sx <= mb.x + mb.w && sy >= mb.y && sy <= mb.y + mb.h) {
+      return 'multiplayer';
     }
 
     // Planet selection
@@ -256,6 +263,22 @@ export class GalaxyView {
     } else {
       this.warpLeftRect = { x: 0, y: 0, w: 0, h: 0 };
     }
+
+    // Multiplayer button (top right)
+    const mpW = 110, mpH = 36;
+    const mpX = w - mpW - 16, mpY = 16;
+    this.multiplayerRect = { x: mpX, y: mpY, w: mpW, h: mpH };
+    ctx.fillStyle = 'rgba(60, 30, 100, 0.9)';
+    ctx.beginPath();
+    ctx.roundRect(mpX, mpY, mpW, mpH, 8);
+    ctx.fill();
+    ctx.strokeStyle = '#aa66ff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = '#ddccff';
+    ctx.font = '14px -apple-system, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Multiplayer', mpX + mpW / 2, mpY + mpH / 2 + 5);
 
     ctx.textAlign = 'left';
 

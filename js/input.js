@@ -6,6 +6,7 @@ export class InputHandler {
     this.onDrag = null;
     this.onDragEnd = null;
     this.onSecondTap = null;
+    this.onKey = null;
     this.keys = new Set();
     this.joystickTouchId = null;
     this.actionTouchId = null;
@@ -28,6 +29,7 @@ export class InputHandler {
       if (e.key === 'Enter') this.enterPressed = true;
       if (e.key === 'y' || e.key === 'Y') this.yPressed = true;
       this.keys.add(e.key.toLowerCase());
+      if (this.onKey) this.onKey(e.key);
     });
     window.addEventListener('keyup', (e) => {
       const isSpace = e.key === ' ' || e.code === 'Space';

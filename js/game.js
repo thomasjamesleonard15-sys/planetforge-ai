@@ -8,8 +8,11 @@ import { LandingCutscene } from './landing-cutscene.js';
 import { DeathCutscene } from './death-cutscene.js';
 import { FuelCutscene } from './fuel-cutscene.js';
 import { QTEPlanet } from './qte-planet.js';
+import { Lobby } from './lobby.js';
+import { multiplayer } from './multiplayer.js';
+import { RemotePlayerPool } from './remote-player.js';
 
-const STATE = { TITLE: 0, GALAXY: 1, SURFACE: 2, SPACE: 3, CUTSCENE: 4, DEATH: 5, FUEL: 6, QTE: 7 };
+const STATE = { TITLE: 0, GALAXY: 1, SURFACE: 2, SPACE: 3, CUTSCENE: 4, DEATH: 5, FUEL: 6, QTE: 7, LOBBY: 8 };
 
 export class Game {
   constructor(canvas) {
@@ -30,11 +33,17 @@ export class Game {
     this.height = 0;
     this.lastTime = 0;
     this.stars = null;
+    this.lobby = null;
+    this.remotePlayers = new RemotePlayerPool();
+    this.multiplayerActive = false;
 
     this.input.onTap = (x, y) => this.handleTap(x, y);
     this.input.onDragStart = (_x, _y) => {};
     this.input.onDrag = (x, y) => this.handleDrag(x, y);
     this.input.onDragEnd = () => this.handleDragEnd();
+    this.input.onKey = (key) => {
+      if (this.state === STATE.LOBBY && this.lobby) this.lobby.handleKey(key);
+    };
   }
 
   start() {
@@ -75,10 +84,16 @@ export class Game {
       return;
     }
 
+    if (this.state === STATE.LOBBY) {
+      if (this.lobby) this.lobby.handleTap(x, y);
+      return;
+    }
+
     if (this.state === STATE.GALAXY) {
       const result = this.galaxy.handleTap(x, y, this.width, this.height);
       if (result === 'enter') this.enterSurface();
       else if (result === 'fly') this.enterSpace();
+      else if (result === 'multiplayer') this.enterLobby();
     } else if (this.state === STATE.SURFACE) {
       if (x >= 12 && x <= 52 && y >= 104 && y <= 134) {
         music.toggle(); return;
@@ -229,6 +244,22 @@ export class Game {
     music.setMode('surface');
   }
 
+  enterLobby() {
+    this.lobby = new Lobby();
+    this.state = STATE.LOBBY;
+  }
+
+  startMultiplayerGame() {
+    this.multiplayerActive = true;
+    multiplayer.onHostState = (data) => {
+      if (data.action === 'start') {
+        this.enterSurface();
+      }
+    };
+    this.state = STATE.GALAXY;
+    this.lobby = null;
+  }
+
   enterSpace() {
     this.space = new SpaceView(this.galaxy.planets);
     this.space.resize(this.width, this.height);
@@ -248,6 +279,43 @@ export class Game {
   update(dt) {
     const move = this.input.getMoveVector();
     if (this.state !== STATE.QTE) this.input.yPressed = false;
+
+    if (this.state === STATE.LOBBY) {
+      if (this.lobby) {
+        this.lobby.update(dt);
+        if (this.lobby.done) {
+          if (this.lobby.result === 'solo') {
+            multiplayer.destroy();
+            this.multiplayerActive = false;
+            this.state = STATE.GALAXY;
+            this.lobby = null;
+          } else {
+            this.startMultiplayerGame();
+            if (this.lobby && this.lobby.result === 'host') {
+              multiplayer.broadcastHostState({ action: 'start' });
+            }
+          }
+        }
+      }
+      return;
+    }
+
+    if (this.multiplayerActive && this.state === STATE.SURFACE && this.surface) {
+      if (multiplayer.update(dt)) {
+        multiplayer.sendState({
+          type: 'state',
+          x: this.surface.player.x,
+          y: this.surface.player.y,
+          health: this.surface.player.health,
+          maxHealth: this.surface.player.maxHealth,
+          skinIndex: this.surface.player.skinIndex,
+          name: this.surface.player.skin.name,
+        });
+      }
+      this.remotePlayers.updateFromStates(multiplayer.remoteStates);
+      this.remotePlayers.update(dt);
+    }
+
     if (this.state === STATE.GALAXY) {
       this.galaxy.update(dt);
     } else if (this.state === STATE.SURFACE) {
@@ -353,6 +421,11 @@ export class Game {
     const ctx = this.ctx;
     ctx.clearRect(0, 0, this.width, this.height);
 
+    if (this.state === STATE.LOBBY) {
+      if (this.lobby) this.lobby.render(ctx, this.width, this.height);
+      return;
+    }
+
     if (this.state === STATE.GALAXY) {
       this.renderStars(ctx);
       this.galaxy.render(ctx, this.width, this.height);
@@ -362,6 +435,10 @@ export class Game {
       if (this.qte) this.qte.render(ctx);
     } else if (this.state === STATE.SURFACE) {
       this.surface.render(ctx);
+      if (this.multiplayerActive) {
+        this.remotePlayers.render(ctx, this.surface.camera);
+        this.renderMultiplayerHUD(ctx);
+      }
       this.renderBackButton(ctx);
     } else if (this.state === STATE.SPACE) {
       this.space.render(ctx);
@@ -391,6 +468,23 @@ export class Game {
     ctx.font = '16px -apple-system, system-ui, sans-serif';
     ctx.fillStyle = music.muted ? '#666' : '#aab';
     ctx.fillText(music.muted ? '🔇' : '🔊', 22, 124);
+    ctx.textAlign = 'left';
+  }
+
+  renderMultiplayerHUD(ctx) {
+    const code = multiplayer.roomCode;
+    const count = multiplayer.playerCount;
+    ctx.fillStyle = 'rgba(20, 20, 40, 0.8)';
+    ctx.beginPath();
+    ctx.roundRect(this.width - 140, 60, 128, 36, 8);
+    ctx.fill();
+    ctx.strokeStyle = '#aa66ff';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.font = '12px -apple-system, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ddccff';
+    ctx.fillText(`Room: ${code}  |  ${count}P`, this.width - 76, 82);
     ctx.textAlign = 'left';
   }
 

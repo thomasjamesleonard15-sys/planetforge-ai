@@ -1,0 +1,171 @@
+const PEER_PREFIX = 'pforge-';
+const SYNC_RATE = 1000 / 15;
+
+export class Multiplayer {
+  constructor() {
+    this.peer = null;
+    this.connections = [];
+    this.isHost = false;
+    this.roomCode = '';
+    this.connected = false;
+    this.onPlayerJoin = null;
+    this.onPlayerLeave = null;
+    this.onStateReceived = null;
+    this.onHostState = null;
+    this.localState = null;
+    this.remoteStates = new Map();
+    this.syncTimer = 0;
+    this.error = '';
+    this.connecting = false;
+    this.peerReady = false;
+  }
+
+  generateCode() {
+    let code = '';
+    for (let i = 0; i < 5; i++) code += Math.floor(Math.random() * 10);
+    return code;
+  }
+
+  async loadPeer() {
+    if (window.Peer) return;
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';
+      s.onload = resolve;
+      s.onerror = () => reject(new Error('Failed to load PeerJS'));
+      document.head.appendChild(s);
+    });
+  }
+
+  async createRoom() {
+    this.error = '';
+    this.connecting = true;
+    try {
+      await this.loadPeer();
+    } catch (_) {
+      this.error = 'Failed to load networking';
+      this.connecting = false;
+      return;
+    }
+    this.roomCode = this.generateCode();
+    this.isHost = true;
+    this.peer = new window.Peer(PEER_PREFIX + this.roomCode);
+
+    this.peer.on('open', () => {
+      this.peerReady = true;
+      this.connected = true;
+      this.connecting = false;
+    });
+
+    this.peer.on('connection', (conn) => {
+      this.setupConnection(conn);
+    });
+
+    this.peer.on('error', (err) => {
+      if (err.type === 'unavailable-id') {
+        this.roomCode = this.generateCode();
+        this.peer.destroy();
+        this.createRoom();
+      } else {
+        this.error = 'Connection error';
+        this.connecting = false;
+      }
+    });
+  }
+
+  async joinRoom(code) {
+    this.error = '';
+    this.connecting = true;
+    try {
+      await this.loadPeer();
+    } catch (_) {
+      this.error = 'Failed to load networking';
+      this.connecting = false;
+      return;
+    }
+    this.roomCode = code;
+    this.isHost = false;
+    this.peer = new window.Peer();
+
+    this.peer.on('open', () => {
+      this.peerReady = true;
+      const conn = this.peer.connect(PEER_PREFIX + code, { reliable: true });
+      this.setupConnection(conn);
+    });
+
+    this.peer.on('error', (err) => {
+      this.error = err.type === 'peer-unavailable' ? 'Room not found' : 'Connection error';
+      this.connecting = false;
+    });
+  }
+
+  setupConnection(conn) {
+    conn.on('open', () => {
+      this.connections.push(conn);
+      this.connected = true;
+      this.connecting = false;
+      if (this.onPlayerJoin) this.onPlayerJoin(conn.peer);
+    });
+
+    conn.on('data', (data) => {
+      if (data.type === 'state') {
+        this.remoteStates.set(conn.peer, data);
+      } else if (data.type === 'host-state' && this.onHostState) {
+        this.onHostState(data);
+      }
+    });
+
+    conn.on('close', () => {
+      this.connections = this.connections.filter(c => c !== conn);
+      this.remoteStates.delete(conn.peer);
+      if (this.onPlayerLeave) this.onPlayerLeave(conn.peer);
+    });
+  }
+
+  sendState(state) {
+    this.localState = state;
+    for (const conn of this.connections) {
+      if (conn.open) {
+        try { conn.send(state); } catch (_) {}
+      }
+    }
+  }
+
+  broadcastHostState(data) {
+    const msg = { type: 'host-state', ...data };
+    for (const conn of this.connections) {
+      if (conn.open) {
+        try { conn.send(msg); } catch (_) {}
+      }
+    }
+  }
+
+  update(dt) {
+    this.syncTimer += dt * 1000;
+    if (this.syncTimer >= SYNC_RATE) {
+      this.syncTimer = 0;
+      return true;
+    }
+    return false;
+  }
+
+  get playerCount() {
+    return this.connections.length + 1;
+  }
+
+  destroy() {
+    for (const conn of this.connections) conn.close();
+    this.connections = [];
+    this.remoteStates.clear();
+    if (this.peer) this.peer.destroy();
+    this.peer = null;
+    this.connected = false;
+    this.peerReady = false;
+    this.roomCode = '';
+    this.isHost = false;
+    this.error = '';
+    this.connecting = false;
+  }
+}
+
+export const multiplayer = new Multiplayer();
