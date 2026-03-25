@@ -189,15 +189,9 @@ export class SpaceView {
     } else if (len > 0.1) {
       this.shipVX += mx * speed * dt; this.shipVY += my * speed * dt;
       this.shipAngle = Math.atan2(my, mx); this.shipThrust = true;
-      this.fuel -= dt * 1.5;
+      this.fuel -= dt * 0.8;
       if (this.fuel < 0) this.fuel = 0;
     } else { this.shipThrust = false; }
-
-    // Passive fuel drain — runs out in ~2 minutes
-    if (this.fuel > 0) {
-      this.fuel -= dt * (100 / 120);
-      if (this.fuel < 0) this.fuel = 0;
-    }
 
     this.shipVX *= SHIP_DRAG; this.shipVY *= SHIP_DRAG;
     this.shipX += this.shipVX * dt; this.shipY += this.shipVY * dt;
