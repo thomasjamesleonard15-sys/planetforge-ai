@@ -11,6 +11,8 @@ import { QTEPlanet } from './qte-planet.js';
 import { Lobby } from './lobby.js';
 import { multiplayer } from './multiplayer.js';
 import { RemotePlayerPool } from './remote-player.js';
+import { RemoteShipPool } from './remote-ship.js';
+import { emitParticles } from './space-pools.js';
 
 const STATE = { TITLE: 0, GALAXY: 1, SURFACE: 2, SPACE: 3, CUTSCENE: 4, DEATH: 5, FUEL: 6, QTE: 7, LOBBY: 8 };
 
@@ -35,7 +37,9 @@ export class Game {
     this.stars = null;
     this.lobby = null;
     this.remotePlayers = new RemotePlayerPool();
+    this.remoteShips = new RemoteShipPool();
     this.multiplayerActive = false;
+    this.newBullets = [];
 
     this.input.onTap = (x, y) => this.handleTap(x, y);
     this.input.onDragStart = (_x, _y) => {};
@@ -302,20 +306,42 @@ export class Game {
       return;
     }
 
-    if (this.multiplayerActive && this.state === STATE.SURFACE && this.surface) {
-      if (multiplayer.update(dt)) {
-        multiplayer.sendState({
-          type: 'state',
-          x: this.surface.player.x,
-          y: this.surface.player.y,
-          health: this.surface.player.health,
-          maxHealth: this.surface.player.maxHealth,
-          skinIndex: this.surface.player.skinIndex,
-          name: this.surface.player.skin.name,
-        });
+    if (this.multiplayerActive) {
+      const shouldSync = multiplayer.update(dt);
+      if (this.state === STATE.SURFACE && this.surface) {
+        if (shouldSync) {
+          multiplayer.sendState({
+            type: 'state', view: 'surface',
+            x: this.surface.player.x, y: this.surface.player.y,
+            health: this.surface.player.health, maxHealth: this.surface.player.maxHealth,
+            skinIndex: this.surface.player.skinIndex, name: this.surface.player.skin.name,
+          });
+        }
+        this.remotePlayers.updateFromStates(multiplayer.remoteStates);
+        this.remotePlayers.update(dt);
+      } else if (this.state === STATE.SPACE && this.space) {
+        if (shouldSync) {
+          multiplayer.sendState({
+            type: 'state', view: 'space',
+            x: this.space.shipX, y: this.space.shipY,
+            angle: this.space.shipAngle, thrust: this.space.shipThrust,
+            health: this.space.shipHealth, maxHealth: this.space.upgrades.getMaxHp(),
+            hijacked: this.space.hijacked, name: 'Player',
+            bullets: this.newBullets,
+          });
+          this.newBullets = [];
+        }
+        this.remoteShips.updateFromStates(multiplayer.remoteStates);
+        this.remoteShips.update(dt);
+        const dmg = this.remoteShips.checkHits(
+          this.space.shipX, this.space.shipY, this.space.shipRadius,
+          this.space.particles, emitParticles
+        );
+        if (dmg > 0) {
+          this.space.shipHealth -= dmg;
+          if (this.space.shipHealth <= 0) { this.space.shipHealth = 0; this.space.gameOver = true; }
+        }
       }
-      this.remotePlayers.updateFromStates(multiplayer.remoteStates);
-      this.remotePlayers.update(dt);
     }
 
     if (this.state === STATE.GALAXY) {
@@ -348,7 +374,15 @@ export class Game {
       }
     } else if (this.state === STATE.SPACE) {
       if (this.input.spaceDown) {
+        const couldFire = this.space.fireCooldown <= 0;
         this.space.shoot(this.input.mouseX, this.input.mouseY);
+        if (this.multiplayerActive && couldFire && this.space.fireCooldown > 0) {
+          for (const b of this.space.bullets) {
+            if (b.active && b.life > 1.7) {
+              this.newBullets.push({ x: b.x, y: b.y, vx: b.vx, vy: b.vy, life: b.life, color: b.color, r: b.r, damage: b.damage });
+            }
+          }
+        }
       }
       this.space.update(dt, move.x, move.y);
       // Enter/Return to land on planet or board alien (after update so targets are fresh)
@@ -444,6 +478,10 @@ export class Game {
       this.renderBackButton(ctx);
     } else if (this.state === STATE.SPACE) {
       this.space.render(ctx);
+      if (this.multiplayerActive) {
+        this.remoteShips.render(ctx);
+        this.renderMultiplayerHUD(ctx);
+      }
       this.renderBackButton(ctx);
     }
   }
