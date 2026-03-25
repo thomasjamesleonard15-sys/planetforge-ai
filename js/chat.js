@@ -2,17 +2,27 @@ import { multiplayer } from './multiplayer.js';
 
 const MAX_MESSAGES = 20;
 const MESSAGE_LIFE = 12;
+const KB_ROWS = [
+  'qwertyuiop',
+  'asdfghjkl',
+  'zxcvbnm',
+];
 
 export class Chat {
   constructor() {
     this.messages = [];
     this.inputActive = false;
     this.inputText = '';
+    this.shiftOn = false;
     this.chatBtnRect = { x: 0, y: 0, w: 0, h: 0 };
     this.sendBtnRect = { x: 0, y: 0, w: 0, h: 0 };
     this.closeBtnRect = { x: 0, y: 0, w: 0, h: 0 };
+    this.keyRects = [];
+    this.shiftRect = { x: 0, y: 0, w: 0, h: 0 };
+    this.backspaceRect = { x: 0, y: 0, w: 0, h: 0 };
+    this.spaceRect = { x: 0, y: 0, w: 0, h: 0 };
     this.quickRects = [];
-    this.quickMessages = ['GG', 'Help!', 'Follow me', 'Nice!', 'Wait', 'Go go go!'];
+    this.quickMessages = ['GG', 'Help!', 'Follow me', 'Nice!', 'Wait', 'Go!'];
   }
 
   addMessage(name, text) {
@@ -36,56 +46,67 @@ export class Chat {
       this.inputActive = !this.inputActive;
       return true;
     }
+    if (!this.inputActive) return false;
 
-    if (this.inputActive) {
-      const cl = this.closeBtnRect;
-      if (x >= cl.x && x <= cl.x + cl.w && y >= cl.y && y <= cl.y + cl.h) {
-        this.inputActive = false;
-        return true;
-      }
-
-      const sb = this.sendBtnRect;
-      if (sb.w > 0 && x >= sb.x && x <= sb.x + sb.w && y >= sb.y && y <= sb.y + sb.h) {
-        if (this.inputText.length > 0) {
-          this.sendMessage(this.inputText);
-          this.inputText = '';
-        }
-        return true;
-      }
-
-      for (let i = 0; i < this.quickRects.length; i++) {
-        const qr = this.quickRects[i];
-        if (x >= qr.x && x <= qr.x + qr.w && y >= qr.y && y <= qr.y + qr.h) {
-          this.sendMessage(this.quickMessages[i]);
-          return true;
-        }
-      }
+    const cl = this.closeBtnRect;
+    if (x >= cl.x && x <= cl.x + cl.w && y >= cl.y && y <= cl.y + cl.h) {
+      this.inputActive = false;
       return true;
     }
-    return false;
+
+    const sb = this.sendBtnRect;
+    if (sb.w > 0 && x >= sb.x && x <= sb.x + sb.w && y >= sb.y && y <= sb.y + sb.h) {
+      if (this.inputText.length > 0) { this.sendMessage(this.inputText); this.inputText = ''; }
+      return true;
+    }
+
+    for (let i = 0; i < this.quickRects.length; i++) {
+      const qr = this.quickRects[i];
+      if (x >= qr.x && x <= qr.x + qr.w && y >= qr.y && y <= qr.y + qr.h) {
+        this.sendMessage(this.quickMessages[i]);
+        return true;
+      }
+    }
+
+    for (const kr of this.keyRects) {
+      if (x >= kr.x && x <= kr.x + kr.w && y >= kr.y && y <= kr.y + kr.h) {
+        const ch = this.shiftOn ? kr.key.toUpperCase() : kr.key;
+        this.inputText += ch;
+        this.shiftOn = false;
+        return true;
+      }
+    }
+
+    const sh = this.shiftRect;
+    if (sh.w > 0 && x >= sh.x && x <= sh.x + sh.w && y >= sh.y && y <= sh.y + sh.h) {
+      this.shiftOn = !this.shiftOn;
+      return true;
+    }
+
+    const bs = this.backspaceRect;
+    if (bs.w > 0 && x >= bs.x && x <= bs.x + bs.w && y >= bs.y && y <= bs.y + bs.h) {
+      this.inputText = this.inputText.slice(0, -1);
+      return true;
+    }
+
+    const sp = this.spaceRect;
+    if (sp.w > 0 && x >= sp.x && x <= sp.x + sp.w && y >= sp.y && y <= sp.y + sp.h) {
+      this.inputText += ' ';
+      return true;
+    }
+
+    return true;
   }
 
   handleKey(key) {
     if (!this.inputActive) return false;
     if (key === 'Enter') {
-      if (this.inputText.length > 0) {
-        this.sendMessage(this.inputText);
-        this.inputText = '';
-      }
+      if (this.inputText.length > 0) { this.sendMessage(this.inputText); this.inputText = ''; }
       return true;
     }
-    if (key === 'Backspace') {
-      this.inputText = this.inputText.slice(0, -1);
-      return true;
-    }
-    if (key === 'Escape') {
-      this.inputActive = false;
-      return true;
-    }
-    if (key.length === 1 && this.inputText.length < 200) {
-      this.inputText += key;
-      return true;
-    }
+    if (key === 'Backspace') { this.inputText = this.inputText.slice(0, -1); return true; }
+    if (key === 'Escape') { this.inputActive = false; return true; }
+    if (key.length === 1 && this.inputText.length < 200) { this.inputText += key; return true; }
     return false;
   }
 
@@ -112,14 +133,13 @@ export class Chat {
     ctx.fillStyle = '#ddd';
     ctx.fillText('💬', bx + btnSize / 2, by + btnSize / 2 + 7);
 
-    const recentMsgs = this.messages.slice(-5);
-    if (recentMsgs.length > 0 && !this.inputActive) {
-      let my = h - 160;
+    if (!this.inputActive) {
+      const recentMsgs = this.messages.slice(-5);
+      let my = h - 70;
       ctx.textAlign = 'left';
       for (let i = recentMsgs.length - 1; i >= 0; i--) {
         const m = recentMsgs[i];
-        const alpha = Math.min(1, m.time / 2);
-        ctx.globalAlpha = alpha;
+        ctx.globalAlpha = Math.min(1, m.time / 2);
         ctx.font = '12px -apple-system, system-ui, sans-serif';
         const tw = ctx.measureText(`${m.name}: ${m.text}`).width + 16;
         ctx.fillStyle = 'rgba(0,0,0,0.6)';
@@ -135,18 +155,15 @@ export class Chat {
       ctx.globalAlpha = 1;
     }
 
-    if (this.inputActive) {
-      this.renderChatPanel(ctx, w, h);
-    }
-
+    if (this.inputActive) this.renderPanel(ctx, w, h);
     ctx.textAlign = 'left';
   }
 
-  renderChatPanel(ctx, w, h) {
-    const pw = Math.min(320, w - 32), ph = 280;
-    const px = w / 2 - pw / 2, py = h / 2 - ph / 2;
+  renderPanel(ctx, w, h) {
+    const pw = Math.min(380, w - 20), ph = h * 0.85;
+    const px = w / 2 - pw / 2, py = h - ph - 10;
 
-    ctx.fillStyle = 'rgba(10, 5, 20, 0.95)';
+    ctx.fillStyle = 'rgba(10, 5, 20, 0.97)';
     ctx.beginPath();
     ctx.roundRect(px, py, pw, ph, 12);
     ctx.fill();
@@ -154,13 +171,13 @@ export class Chat {
     ctx.lineWidth = 2;
     ctx.stroke();
 
+    // Title + close
     ctx.font = 'bold 16px -apple-system, system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#aa88ff';
-    ctx.fillText('CHAT', px + pw / 2, py + 24);
+    ctx.fillText('CHAT', px + pw / 2, py + 22);
 
-    const clw = 30, clh = 30;
-    const clx = px + pw - clw - 8, cly = py + 6;
+    const clw = 30, clh = 30, clx = px + pw - clw - 8, cly = py + 6;
     this.closeBtnRect = { x: clx, y: cly, w: clw, h: clh };
     ctx.fillStyle = '#442222';
     ctx.beginPath();
@@ -170,40 +187,41 @@ export class Chat {
     ctx.font = '16px -apple-system, system-ui, sans-serif';
     ctx.fillText('✕', clx + clw / 2, cly + clh / 2 + 5);
 
+    // Messages
     ctx.textAlign = 'left';
-    const msgArea = { x: px + 10, y: py + 40, w: pw - 20, h: 100 };
+    const msgY = py + 36, msgH = 70;
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.beginPath();
-    ctx.roundRect(msgArea.x, msgArea.y, msgArea.w, msgArea.h, 6);
+    ctx.roundRect(px + 8, msgY, pw - 16, msgH, 6);
     ctx.fill();
 
-    const visible = this.messages.slice(-5);
-    let my = msgArea.y + 16;
-    ctx.font = '12px -apple-system, system-ui, sans-serif';
+    const visible = this.messages.slice(-4);
+    let my = msgY + 16;
+    ctx.font = '11px -apple-system, system-ui, sans-serif';
     for (const m of visible) {
       ctx.fillStyle = '#ffaa44';
-      ctx.fillText(`${m.name}:`, msgArea.x + 6, my);
+      ctx.fillText(`${m.name}:`, px + 14, my);
       ctx.fillStyle = '#ddd';
-      ctx.fillText(m.text, msgArea.x + 6 + ctx.measureText(`${m.name}: `).width, my);
-      my += 18;
+      ctx.fillText(m.text, px + 14 + ctx.measureText(`${m.name}: `).width, my);
+      my += 16;
     }
 
-    const inputY = msgArea.y + msgArea.h + 10;
-    const inputW = pw - 80, inputH = 34;
+    // Input + send
+    const iy = msgY + msgH + 6;
+    const iw = pw - 80, ih = 30;
     ctx.fillStyle = '#1a1a2e';
     ctx.beginPath();
-    ctx.roundRect(px + 10, inputY, inputW, inputH, 6);
+    ctx.roundRect(px + 8, iy, iw, ih, 6);
     ctx.fill();
     ctx.strokeStyle = '#5566aa';
     ctx.lineWidth = 1;
     ctx.stroke();
-
-    ctx.font = '14px -apple-system, system-ui, sans-serif';
+    ctx.font = '13px -apple-system, system-ui, sans-serif';
     ctx.fillStyle = this.inputText ? '#fff' : '#666';
-    ctx.fillText(this.inputText || 'Type a message...', px + 18, inputY + 22);
+    const displayText = this.inputText.length > 25 ? '...' + this.inputText.slice(-22) : this.inputText;
+    ctx.fillText(displayText || 'Type...', px + 14, iy + 20);
 
-    const sbw = 56, sbh = 34;
-    const sbx = px + 10 + inputW + 6, sby = inputY;
+    const sbw = 56, sbh = ih, sbx = px + 8 + iw + 6, sby = iy;
     this.sendBtnRect = { x: sbx, y: sby, w: sbw, h: sbh };
     ctx.fillStyle = this.inputText ? '#3b82f6' : '#333';
     ctx.beginPath();
@@ -211,37 +229,108 @@ export class Chat {
     ctx.fill();
     ctx.textAlign = 'center';
     ctx.fillStyle = '#fff';
-    ctx.font = 'bold 13px -apple-system, system-ui, sans-serif';
-    ctx.fillText('Send', sbx + sbw / 2, sby + sbh / 2 + 5);
+    ctx.font = 'bold 12px -apple-system, system-ui, sans-serif';
+    ctx.fillText('Send', sbx + sbw / 2, sby + sbh / 2 + 4);
 
-    const qy = inputY + inputH + 12;
-    ctx.font = '11px -apple-system, system-ui, sans-serif';
-    ctx.fillStyle = '#8888aa';
-    ctx.fillText('Quick:', px + pw / 2, qy);
-
+    // Quick messages
+    const qy = iy + ih + 6;
     this.quickRects = [];
-    const qGap = 6;
-    let qx = px + 10;
-    const qRow = qy + 8;
+    let qx = px + 8;
+    ctx.font = '11px -apple-system, system-ui, sans-serif';
     for (let i = 0; i < this.quickMessages.length; i++) {
       const txt = this.quickMessages[i];
-      const tw = ctx.measureText(txt).width + 16;
-      const qh = 28;
-      if (qx + tw > px + pw - 10) { qx = px + 10; }
-      this.quickRects.push({ x: qx, y: qRow, w: tw, h: qh });
+      const tw = ctx.measureText(txt).width + 14;
+      const qh = 24;
+      if (qx + tw > px + pw - 8) { qx = px + 8; }
+      this.quickRects.push({ x: qx, y: qy, w: tw, h: qh });
       ctx.fillStyle = '#2a2a4e';
       ctx.beginPath();
-      ctx.roundRect(qx, qRow, tw, qh, 6);
+      ctx.roundRect(qx, qy, tw, qh, 5);
       ctx.fill();
-      ctx.strokeStyle = '#5566aa';
-      ctx.lineWidth = 1;
-      ctx.stroke();
       ctx.textAlign = 'center';
-      ctx.fillStyle = '#ddd';
-      ctx.fillText(txt, qx + tw / 2, qRow + qh / 2 + 4);
-      qx += tw + qGap;
+      ctx.fillStyle = '#aaa';
+      ctx.fillText(txt, qx + tw / 2, qy + qh / 2 + 4);
+      qx += tw + 4;
     }
 
+    // Keyboard
+    this.renderKeyboard(ctx, px, pw, qy + 30);
     ctx.textAlign = 'left';
+  }
+
+  renderKeyboard(ctx, px, pw, startY) {
+    this.keyRects = [];
+    const gap = 4;
+    const kh = 36;
+
+    for (let r = 0; r < KB_ROWS.length; r++) {
+      const row = KB_ROWS[r];
+      const kw = Math.floor((pw - 16 - (row.length - 1) * gap) / row.length);
+      const indent = r === 1 ? 12 : r === 2 ? 36 : 0;
+      const ky = startY + r * (kh + gap);
+
+      for (let c = 0; c < row.length; c++) {
+        const kx = px + 8 + indent + c * (kw + gap);
+        const ch = row[c];
+        this.keyRects.push({ x: kx, y: ky, w: kw, h: kh, key: ch });
+
+        ctx.fillStyle = '#222244';
+        ctx.beginPath();
+        ctx.roundRect(kx, ky, kw, kh, 6);
+        ctx.fill();
+        ctx.strokeStyle = '#444466';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#ddd';
+        ctx.font = 'bold 16px -apple-system, system-ui, sans-serif';
+        ctx.fillText(this.shiftOn ? ch.toUpperCase() : ch, kx + kw / 2, ky + kh / 2 + 6);
+      }
+
+      // Shift on row 2, backspace on row 2
+      if (r === 2) {
+        const shW = 30;
+        const shX = px + 8;
+        this.shiftRect = { x: shX, y: ky, w: shW, h: kh };
+        ctx.fillStyle = this.shiftOn ? '#4444aa' : '#222244';
+        ctx.beginPath();
+        ctx.roundRect(shX, ky, shW, kh, 6);
+        ctx.fill();
+        ctx.strokeStyle = '#444466';
+        ctx.stroke();
+        ctx.fillStyle = '#aaa';
+        ctx.font = '14px -apple-system, system-ui, sans-serif';
+        ctx.fillText('⇧', shX + shW / 2, ky + kh / 2 + 5);
+
+        const bsW = 40;
+        const bsX = px + pw - 8 - bsW;
+        this.backspaceRect = { x: bsX, y: ky, w: bsW, h: kh };
+        ctx.fillStyle = '#442222';
+        ctx.beginPath();
+        ctx.roundRect(bsX, ky, bsW, kh, 6);
+        ctx.fill();
+        ctx.strokeStyle = '#664444';
+        ctx.stroke();
+        ctx.fillStyle = '#ff8888';
+        ctx.font = '14px -apple-system, system-ui, sans-serif';
+        ctx.fillText('⌫', bsX + bsW / 2, ky + kh / 2 + 5);
+      }
+    }
+
+    // Space bar
+    const spY = startY + 3 * (kh + gap);
+    const spW = pw * 0.5, spH = kh;
+    const spX = px + pw / 2 - spW / 2;
+    this.spaceRect = { x: spX, y: spY, w: spW, h: spH };
+    ctx.fillStyle = '#222244';
+    ctx.beginPath();
+    ctx.roundRect(spX, spY, spW, spH, 6);
+    ctx.fill();
+    ctx.strokeStyle = '#444466';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = '#888';
+    ctx.font = '13px -apple-system, system-ui, sans-serif';
+    ctx.fillText('space', spX + spW / 2, spY + spH / 2 + 5);
   }
 }
