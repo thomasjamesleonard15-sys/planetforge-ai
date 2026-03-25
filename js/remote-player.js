@@ -7,14 +7,17 @@ export class RemotePlayerPool {
     this.pool = [];
     for (let i = 0; i < MAX_REMOTE; i++) {
       this.pool.push({
-        active: false,
-        peerId: '',
-        x: 0, y: 0,
-        targetX: 0, targetY: 0,
-        radius: 14,
-        health: 100, maxHealth: 100,
-        skinIndex: 0,
-        name: '',
+        active: false, peerId: '',
+        x: 0, y: 0, targetX: 0, targetY: 0,
+        radius: 14, health: 100, maxHealth: 100,
+        skinIndex: 0, name: '',
+      });
+    }
+    this.remoteBullets = [];
+    for (let i = 0; i < 80; i++) {
+      this.remoteBullets.push({
+        active: false, x: 0, y: 0, vx: 0, vy: 0,
+        life: 0, color: '#ff4444', radius: 3, damage: 10,
       });
     }
   }
@@ -39,6 +42,20 @@ export class RemotePlayerPool {
       rp.maxHealth = state.maxHealth || 100;
       rp.skinIndex = state.skinIndex || 0;
       rp.name = state.name || 'Player';
+
+      if (state.bullets) {
+        for (const sb of state.bullets) {
+          const b = this.remoteBullets.find(b => !b.active);
+          if (!b) break;
+          b.active = true;
+          b.x = sb.x; b.y = sb.y;
+          b.vx = sb.vx; b.vy = sb.vy;
+          b.life = sb.life || 1.8;
+          b.color = sb.color || '#ff4444';
+          b.radius = sb.radius || 3;
+          b.damage = sb.damage || 10;
+        }
+      }
     }
     for (const rp of this.pool) {
       if (rp.active && !seen.has(rp.peerId)) rp.active = false;
@@ -52,6 +69,29 @@ export class RemotePlayerPool {
       rp.x += (rp.targetX - rp.x) * lerpSpeed;
       rp.y += (rp.targetY - rp.y) * lerpSpeed;
     }
+    for (const b of this.remoteBullets) {
+      if (!b.active) continue;
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+      b.life -= dt;
+      if (b.life <= 0) b.active = false;
+    }
+  }
+
+  checkHits(playerX, playerY, playerRadius, particles) {
+    let totalDamage = 0;
+    for (const b of this.remoteBullets) {
+      if (!b.active) continue;
+      const dx = b.x - playerX, dy = b.y - playerY;
+      if (dx * dx + dy * dy < (b.radius + playerRadius) ** 2) {
+        b.active = false;
+        totalDamage += b.damage;
+        if (particles) {
+          particles.emit(b.x, b.y, 4, { color: '#ff2244', speed: 80, life: 0.3, radius: 2 });
+        }
+      }
+    }
+    return totalDamage;
   }
 
   render(ctx, camera) {
@@ -90,6 +130,22 @@ export class RemotePlayerPool {
       ctx.fillStyle = 'rgba(255,200,100,0.7)';
       ctx.fillText(rp.name || sk.name, s.x, s.y + rp.radius + 12);
       ctx.textAlign = 'left';
+      ctx.globalAlpha = 1;
+    }
+
+    for (const b of this.remoteBullets) {
+      if (!b.active) continue;
+      if (!camera.isVisible(b.x, b.y)) continue;
+      const s = camera.worldToScreen(b.x, b.y);
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, b.radius, 0, Math.PI * 2);
+      ctx.fillStyle = b.color;
+      ctx.fill();
+      ctx.globalAlpha = 0.15;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, b.radius * 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = b.color;
+      ctx.fill();
       ctx.globalAlpha = 1;
     }
   }

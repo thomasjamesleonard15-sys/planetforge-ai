@@ -40,6 +40,7 @@ export class Game {
     this.remoteShips = new RemoteShipPool();
     this.multiplayerActive = false;
     this.newBullets = [];
+    this.newSurfaceBullets = [];
 
     this.input.onTap = (x, y) => this.handleTap(x, y);
     this.input.onDragStart = (_x, _y) => {};
@@ -315,10 +316,23 @@ export class Game {
             x: this.surface.player.x, y: this.surface.player.y,
             health: this.surface.player.health, maxHealth: this.surface.player.maxHealth,
             skinIndex: this.surface.player.skinIndex, name: this.surface.player.skin.name,
+            bullets: this.newSurfaceBullets,
           });
+          this.newSurfaceBullets = [];
         }
         this.remotePlayers.updateFromStates(multiplayer.remoteStates, this.pendingPlanetName);
         this.remotePlayers.update(dt);
+        const dmg = this.remotePlayers.checkHits(
+          this.surface.player.x, this.surface.player.y, this.surface.player.radius,
+          this.surface.particles
+        );
+        if (dmg > 0) {
+          this.surface.player.health -= dmg;
+          if (this.surface.player.health <= 0) {
+            this.surface.player.health = 0;
+            this.surface.gameOver = true;
+          }
+        }
       } else if (this.state === STATE.SPACE && this.space) {
         if (shouldSync) {
           multiplayer.sendState({
@@ -353,7 +367,15 @@ export class Game {
         this.surface.player.update(dt, move.x, move.y);
       }
       if (this.input.spaceDown) {
+        const couldFire = this.surface.player.fireCooldown <= 0;
         this.surface.tryShoot(this.input.mouseX, this.input.mouseY);
+        if (this.multiplayerActive && couldFire && this.surface.player.fireCooldown > 0) {
+          for (const p of this.surface.projectiles.pool) {
+            if (p.active && p.friendly && p.life > 1.9) {
+              this.newSurfaceBullets.push({ x: p.x, y: p.y, vx: p.vx, vy: p.vy, life: p.life, color: p.color, radius: p.radius, damage: p.damage });
+            }
+          }
+        }
       }
       this.surface.update(dt);
       // Victory cutscene finished — go home
