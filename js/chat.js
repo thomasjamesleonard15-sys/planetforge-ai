@@ -82,7 +82,7 @@ export class Chat {
       this.inputActive = false;
       return true;
     }
-    if (key.length === 1 && this.inputText.length < 50) {
+    if (key.length === 1 && this.inputText.length < 200) {
       this.inputText += key;
       return true;
     }
