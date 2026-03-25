@@ -202,16 +202,28 @@ export class Lobby {
     if (multiplayer.connecting) {
       ctx.fillStyle = '#ffaa44';
       ctx.fillText('Setting up room...', w / 2, h * 0.60);
+    } else if (multiplayer.connected) {
+      ctx.fillStyle = '#44ff88';
+      ctx.fillText('Room ready!', w / 2, h * 0.60);
     }
 
-    this.drawBtn(ctx, w / 2, h * 0.72, 180, 50, 'START GAME', '#22cc44', this.startBtnRect);
+    const canStart = multiplayer.connected && !multiplayer.connecting;
+    this.drawBtn(ctx, w / 2, h * 0.72, 180, 50, 'START GAME', canStart ? '#22cc44' : '#333', this.startBtnRect);
     this.drawBtn(ctx, w / 2 - 120, h * 0.12, 80, 36, '← Back', '#444', this.backBtnRect);
   }
 
   renderConnecting(ctx, w, h) {
     ctx.font = '18px -apple-system, system-ui, sans-serif';
-    ctx.fillStyle = '#ffaa44';
-    ctx.fillText('Connecting to room ' + this.joinCode + '...', w / 2, h * 0.45);
+    if (multiplayer.error) {
+      ctx.fillStyle = '#ff4444';
+      ctx.fillText(multiplayer.error, w / 2, h * 0.42);
+      ctx.font = '14px -apple-system, system-ui, sans-serif';
+      ctx.fillStyle = '#aaaacc';
+      ctx.fillText('Tap back and try again', w / 2, h * 0.50);
+    } else {
+      ctx.fillStyle = '#ffaa44';
+      ctx.fillText('Connecting to room ' + this.joinCode + '...', w / 2, h * 0.45);
+    }
     this.drawBtn(ctx, w / 2 - 120, h * 0.12, 80, 36, '← Back', '#444', this.backBtnRect);
   }
 
