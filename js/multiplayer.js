@@ -12,6 +12,7 @@ export class Multiplayer {
     this.onPlayerJoin = null;
     this.onPlayerLeave = null;
     this.onHostState = null;
+    this.onChat = null;
     this.localState = null;
     this.remoteStates = new Map();
     this.syncTimer = 0;
@@ -157,6 +158,8 @@ export class Multiplayer {
         this.remoteStates.set(conn.peer, data);
       } else if (data.type === 'host-state' && this.onHostState) {
         this.onHostState(data);
+      } else if (data.type === 'chat' && this.onChat) {
+        this.onChat(data);
       }
     });
 

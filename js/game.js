@@ -16,6 +16,7 @@ import { emitParticles } from './space-pools.js';
 import { WorldSync } from './world-sync.js';
 import { BlackHoleCutscene } from './blackhole-cutscene.js';
 import { ArcadeMenu } from './arcade-menu.js';
+import { Chat } from './chat.js';
 import { RacingGame } from './racing-game.js';
 
 const STATE = { TITLE: 0, GALAXY: 1, SURFACE: 2, SPACE: 3, CUTSCENE: 4, DEATH: 5, FUEL: 6, QTE: 7, LOBBY: 8, BLACKHOLE: 9, ARCADE: 10, RACE: 11 };
@@ -48,12 +49,14 @@ export class Game {
     this.newBullets = [];
     this.newSurfaceBullets = [];
     this.worldSync = new WorldSync();
+    this.chat = new Chat();
 
     this.input.onTap = (x, y) => this.handleTap(x, y);
     this.input.onDragStart = (_x, _y) => {};
     this.input.onDrag = (x, y) => this.handleDrag(x, y);
     this.input.onDragEnd = () => this.handleDragEnd();
     this.input.onKey = (key) => {
+      if (this.multiplayerActive && this.chat.handleKey(key)) return;
       if (this.state === STATE.LOBBY && this.lobby) this.lobby.handleKey(key);
     };
   }
@@ -75,6 +78,8 @@ export class Game {
   }
 
   handleTap(x, y) {
+    if (this.multiplayerActive && this.chat.handleTap(x, y)) return;
+
     // Skip cutscenes — only via skip button (bottom-right)
     if (this.state === STATE.CUTSCENE || this.state === STATE.DEATH || this.state === STATE.FUEL) {
       const sbx = this.width - 130, sby = this.height - 60;
@@ -275,6 +280,9 @@ export class Game {
   enterLobby() {
     this.lobby = new Lobby();
     this.state = STATE.LOBBY;
+    multiplayer.onChat = (data) => {
+      if (data.text) this.chat.addMessage(data.name || 'Player', data.text);
+    };
     multiplayer.onHostState = (data) => {
       if (data.action === 'start' && this.state === STATE.LOBBY && this.lobby) {
         this.lobby.done = true;
@@ -341,6 +349,7 @@ export class Game {
     }
 
     if (this.multiplayerActive) {
+      this.chat.update(dt);
       const shouldSync = multiplayer.update(dt);
       if (this.state === STATE.SURFACE && this.surface) {
         if (shouldSync) {
@@ -583,6 +592,7 @@ export class Game {
       if (this.multiplayerActive) {
         this.remotePlayers.render(ctx, this.surface.camera);
         this.renderMultiplayerHUD(ctx);
+        this.chat.render(ctx, this.width, this.height);
       }
       this.renderBackButton(ctx);
     } else if (this.state === STATE.SPACE) {
@@ -590,6 +600,7 @@ export class Game {
       if (this.multiplayerActive) {
         this.remoteShips.render(ctx);
         this.renderMultiplayerHUD(ctx);
+        this.chat.render(ctx, this.width, this.height);
       }
       this.renderBackButton(ctx);
     }
