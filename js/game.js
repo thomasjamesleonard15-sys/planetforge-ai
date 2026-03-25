@@ -311,18 +311,18 @@ export class Game {
       if (this.state === STATE.SURFACE && this.surface) {
         if (shouldSync) {
           multiplayer.sendState({
-            type: 'state', view: 'surface',
+            type: 'state', view: 'surface', planet: this.pendingPlanetName,
             x: this.surface.player.x, y: this.surface.player.y,
             health: this.surface.player.health, maxHealth: this.surface.player.maxHealth,
             skinIndex: this.surface.player.skinIndex, name: this.surface.player.skin.name,
           });
         }
-        this.remotePlayers.updateFromStates(multiplayer.remoteStates);
+        this.remotePlayers.updateFromStates(multiplayer.remoteStates, this.pendingPlanetName);
         this.remotePlayers.update(dt);
       } else if (this.state === STATE.SPACE && this.space) {
         if (shouldSync) {
           multiplayer.sendState({
-            type: 'state', view: 'space',
+            type: 'state', view: 'space', galaxy: this.galaxy.currentGalaxy,
             x: this.space.shipX, y: this.space.shipY,
             angle: this.space.shipAngle, thrust: this.space.shipThrust,
             health: this.space.shipHealth, maxHealth: this.space.upgrades.getMaxHp(),
@@ -331,7 +331,7 @@ export class Game {
           });
           this.newBullets = [];
         }
-        this.remoteShips.updateFromStates(multiplayer.remoteStates);
+        this.remoteShips.updateFromStates(multiplayer.remoteStates, this.galaxy.currentGalaxy);
         this.remoteShips.update(dt);
         const dmg = this.remoteShips.checkHits(
           this.space.shipX, this.space.shipY, this.space.shipRadius,
@@ -341,6 +341,8 @@ export class Game {
           this.space.shipHealth -= dmg;
           if (this.space.shipHealth <= 0) { this.space.shipHealth = 0; this.space.gameOver = true; }
         }
+      } else if (shouldSync) {
+        multiplayer.sendState({ type: 'state', view: 'other' });
       }
     }
 

@@ -18,10 +18,10 @@ export class RemoteShipPool {
     }
   }
 
-  updateFromStates(remoteStates) {
+  updateFromStates(remoteStates, localGalaxy) {
     const seen = new Set();
     for (const [peerId, state] of remoteStates) {
-      if (state.view !== 'space') continue;
+      if (state.view !== 'space' || state.galaxy !== localGalaxy) continue;
       seen.add(peerId);
       let rs = this.pool.find(s => s.active && s.peerId === peerId);
       if (!rs) {

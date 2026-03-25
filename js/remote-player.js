@@ -19,9 +19,10 @@ export class RemotePlayerPool {
     }
   }
 
-  updateFromStates(remoteStates) {
+  updateFromStates(remoteStates, localPlanet) {
     const seen = new Set();
     for (const [peerId, state] of remoteStates) {
+      if (state.view !== 'surface' || state.planet !== localPlanet) continue;
       seen.add(peerId);
       let rp = this.pool.find(p => p.active && p.peerId === peerId);
       if (!rp) {
