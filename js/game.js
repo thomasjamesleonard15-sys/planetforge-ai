@@ -77,6 +77,18 @@ export class Game {
     requestAnimationFrame((t) => this.loop(t));
   }
 
+  startWithJoin(roomCode) {
+    this.running = true;
+    this.lastTime = performance.now();
+    music.start();
+    music.setMode('galaxy');
+    this.enterLobby();
+    this.lobby.joinCode = roomCode;
+    this.lobby.mode = 'connecting';
+    multiplayer.joinRoom(roomCode);
+    requestAnimationFrame((t) => this.loop(t));
+  }
+
   resize(w, h) {
     this.width = w;
     this.height = h;

@@ -5,7 +5,6 @@ const titleScreen = document.getElementById('title-screen');
 
 const game = new Game(canvas);
 
-// Hide HTML title — intro cutscene replaces it
 titleScreen.style.display = 'none';
 canvas.focus();
 
@@ -19,4 +18,12 @@ function resize() {
 
 window.addEventListener('resize', resize);
 resize();
-game.start();
+
+const params = new URLSearchParams(location.search);
+const roomCode = params.get('room');
+if (roomCode && roomCode.length === 5) {
+  history.replaceState(null, '', location.pathname);
+  game.startWithJoin(roomCode);
+} else {
+  game.start();
+}

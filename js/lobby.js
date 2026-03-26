@@ -16,6 +16,9 @@ export class Lobby {
     this.delRect = { x: 0, y: 0, w: 0, h: 0 };
     this.done = false;
     this.result = '';
+    this.copyRect = { x: 0, y: 0, w: 0, h: 0 };
+    this.copied = false;
+    this.copiedTimer = 0;
   }
 
   handleTap(x, y) {
@@ -51,6 +54,11 @@ export class Lobby {
       if (this.hitRect(x, y, this.backBtnRect)) {
         multiplayer.destroy();
         this.mode = 'menu';
+      } else if (this.hitRect(x, y, this.copyRect) && multiplayer.roomCode) {
+        const url = `${location.origin}${location.pathname}?room=${multiplayer.roomCode}`;
+        try { navigator.clipboard.writeText(url); } catch (_) {}
+        this.copied = true;
+        this.copiedTimer = 2;
       } else if (this.hitRect(x, y, this.startBtnRect) && multiplayer.connected) {
         this.done = true;
         this.result = 'host';
@@ -85,6 +93,7 @@ export class Lobby {
 
   update(dt) {
     this.cursorBlink += dt;
+    if (this.copiedTimer > 0) { this.copiedTimer -= dt; if (this.copiedTimer <= 0) this.copied = false; }
     if (this.mode === 'connecting' && multiplayer.connected) {
       this.mode = 'joined';
     }
@@ -207,8 +216,17 @@ export class Lobby {
       ctx.fillText('Room ready!', w / 2, h * 0.60);
     }
 
+    // Share link
+    if (multiplayer.roomCode) {
+      const url = `${location.origin}${location.pathname}?room=${multiplayer.roomCode}`;
+      ctx.font = '11px monospace';
+      ctx.fillStyle = '#6666aa';
+      ctx.fillText(url, w / 2, h * 0.64);
+      this.drawBtn(ctx, w / 2, h * 0.69, 140, 36, this.copied ? 'Copied!' : 'Copy Link', this.copied ? '#22aa44' : '#4466aa', this.copyRect);
+    }
+
     const canStart = multiplayer.connected && !multiplayer.connecting;
-    this.drawBtn(ctx, w / 2, h * 0.72, 180, 50, 'START GAME', canStart ? '#22cc44' : '#333', this.startBtnRect);
+    this.drawBtn(ctx, w / 2, h * 0.78, 180, 50, 'START GAME', canStart ? '#22cc44' : '#333', this.startBtnRect);
     this.drawBtn(ctx, w / 2 - 120, h * 0.12, 80, 36, '← Back', '#444', this.backBtnRect);
   }
 
