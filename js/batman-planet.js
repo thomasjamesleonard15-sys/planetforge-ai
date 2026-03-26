@@ -19,7 +19,14 @@ const VILLAINS = [
   { name: 'Riddler Bot', health: 15, speed: 80, damage: 4, radius: 8, color: '#44ff44', reward: 6, hat: 'question' },
   { name: 'Bane Soldier', health: 80, speed: 30, damage: 18, radius: 18, color: '#886644', reward: 20, hat: 'mask' },
   { name: 'Mr. Freeze Drone', health: 50, speed: 45, damage: 12, radius: 14, color: '#88ccff', reward: 15, hat: 'ice' },
-  { name: 'JOKER', health: 200, speed: 50, damage: 20, radius: 22, color: '#22cc44', reward: 50, hat: 'joker' },
+];
+
+const BOSSES = [
+  { name: 'THE JOKER', health: 500, speed: 55, damage: 25, radius: 28, color: '#22cc44', reward: 100, hat: 'joker', wave: 20, msg: 'THE JOKER HAS ARRIVED!' },
+  { name: 'THE PENGUIN', health: 600, speed: 35, damage: 30, radius: 30, color: '#223344', reward: 120, hat: 'tophat', wave: 40, msg: 'THE PENGUIN WADDLES IN!' },
+  { name: 'THE RIDDLER', health: 400, speed: 75, damage: 20, radius: 24, color: '#22ff22', reward: 110, hat: 'question', wave: 60, msg: 'THE RIDDLER CHALLENGES YOU!' },
+  { name: 'BANE', health: 900, speed: 40, damage: 40, radius: 35, color: '#775533', reward: 150, hat: 'mask', wave: 80, msg: 'BANE WILL BREAK YOU!' },
+  { name: 'MR. FREEZE', health: 700, speed: 45, damage: 35, radius: 30, color: '#66aaee', reward: 130, hat: 'ice', wave: 100, msg: 'MR. FREEZE — CHILL OUT!' },
 ];
 
 const MAX_ENEMIES = 40;
@@ -45,6 +52,10 @@ export class BatmanPlanet {
     this.kills = 0;
     this.score = 0;
     this.done = false;
+    this.bossActive = false;
+    this.bossAnnounce = '';
+    this.bossAnnounceTimer = 0;
+    this.finalBoss = false;
 
     this.enemies = [];
     for (let i = 0; i < MAX_ENEMIES; i++) {
@@ -124,12 +135,9 @@ export class BatmanPlanet {
     });
   }
 
-  spawnVillain() {
+  spawnEnemy(t, scaling) {
     const e = this.enemies.find(e => !e.active);
     if (!e) return;
-    const maxType = Math.min(VILLAINS.length - 1, Math.floor(this.wave / 2));
-    const isBoss = this.wave > 0 && this.wave % 5 === 0 && this.spawnQueue === 1;
-    const t = isBoss ? VILLAINS[5] : VILLAINS[Math.floor(Math.random() * (maxType + 1))];
     const mapPx = MAP_SIZE * TILE_SIZE;
     const side = Math.random() * 4 | 0;
     if (side === 0) { e.x = Math.random() * mapPx; e.y = -20; }
@@ -137,7 +145,7 @@ export class BatmanPlanet {
     else if (side === 2) { e.x = Math.random() * mapPx; e.y = mapPx + 20; }
     else { e.x = -20; e.y = Math.random() * mapPx; }
     e.active = true;
-    e.health = t.health + this.wave * 3;
+    e.health = t.health + scaling;
     e.maxHealth = e.health;
     e.speed = t.speed;
     e.damage = t.damage;
@@ -147,6 +155,39 @@ export class BatmanPlanet {
     e.hat = t.hat;
     e.name = t.name;
     e.attackCooldown = 0;
+  }
+
+  spawnVillain() {
+    const maxType = Math.min(VILLAINS.length - 1, Math.floor(this.wave / 4));
+    const t = VILLAINS[Math.floor(Math.random() * (maxType + 1))];
+    this.spawnEnemy(t, this.wave * 3);
+  }
+
+  spawnBoss(boss) {
+    this.spawnEnemy(boss, this.wave * 5);
+    this.bossActive = true;
+    this.bossAnnounce = boss.msg;
+    this.bossAnnounceTimer = 3;
+    try {
+      const u = new SpeechSynthesisUtterance(boss.msg);
+      u.pitch = 0.3; u.rate = 0.6;
+      speechSynthesis.speak(u);
+    } catch (_) {}
+  }
+
+  spawnAllBosses() {
+    this.finalBoss = true;
+    this.bossActive = true;
+    this.bossAnnounce = 'ALL VILLAINS ATTACK!';
+    this.bossAnnounceTimer = 4;
+    for (const boss of BOSSES) {
+      this.spawnEnemy(boss, this.wave * 5);
+    }
+    try {
+      const u = new SpeechSynthesisUtterance("They're all here! Every last one of them!");
+      u.pitch = 0.2; u.rate = 0.6;
+      speechSynthesis.speak(u);
+    } catch (_) {}
   }
 
   activeEnemyCount() {
@@ -164,20 +205,38 @@ export class BatmanPlanet {
     this.particles.update(dt);
     this.hud.update(dt);
 
-    this.waveTimer -= dt;
-    if (this.waveTimer <= 0 && this.spawnQueue <= 0 && this.activeEnemyCount() === 0) {
-      this.wave++;
-      this.spawnQueue = 4 + this.wave * 2;
-      this.spawnCooldown = 0;
-      this.waveTimer = 15 + this.wave * 2;
-      if (this.wave % 5 === 0) {
-        this.hud.showMessage('BOSS WAVE — THE JOKER APPROACHES!');
-      } else {
-        this.hud.showMessage(`Wave ${this.wave} — Gotham needs you!`);
+    if (this.bossAnnounceTimer > 0) this.bossAnnounceTimer -= dt;
+    if (this.bossActive && this.activeEnemyCount() === 0) {
+      this.bossActive = false;
+      this.player.health = Math.min(this.player.maxHealth, this.player.health + 50);
+      this.hud.showMessage('Boss defeated! +50 HP restored!');
+      if (this.finalBoss) {
+        this.hud.showMessage('GOTHAM IS SAVED FOREVER!');
+        this.done = true;
+        return;
       }
     }
 
-    if (this.spawnQueue > 0) {
+    this.waveTimer -= dt;
+    if (!this.bossActive && this.waveTimer <= 0 && this.spawnQueue <= 0 && this.activeEnemyCount() === 0) {
+      this.wave++;
+      const boss = BOSSES.find(b => b.wave === this.wave);
+      if (this.wave > 100 && !this.finalBoss) {
+        this.spawnAllBosses();
+        this.spawnQueue = 0;
+      } else if (boss) {
+        this.spawnBoss(boss);
+        this.spawnQueue = 3 + Math.floor(this.wave / 10);
+        this.waveTimer = 999;
+      } else {
+        this.spawnQueue = 4 + this.wave * 2;
+        this.waveTimer = 15 + this.wave;
+        this.hud.showMessage(`Wave ${this.wave} — Gotham needs you!`);
+      }
+      this.spawnCooldown = 0;
+    }
+
+    if (this.spawnQueue > 0 && !this.bossActive) {
       this.spawnCooldown -= dt;
       if (this.spawnCooldown <= 0) {
         this.spawnVillain();
@@ -233,10 +292,6 @@ export class BatmanPlanet {
       this.done = true;
     }
 
-    if (this.wave >= 10 && this.activeEnemyCount() === 0 && this.spawnQueue <= 0) {
-      this.hud.showMessage('Gotham is safe! For now...');
-      this.done = true;
-    }
   }
 
   render(ctx) {
@@ -268,6 +323,18 @@ export class BatmanPlanet {
 
     this.renderBatHUD(ctx, w, h);
     this.hud.render(ctx, w, h, { food: 0, metal: this.score, energy: 0, wave: this.wave, score: this.score }, this.player);
+
+    if (this.bossAnnounceTimer > 0) {
+      ctx.globalAlpha = Math.min(1, this.bossAnnounceTimer);
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(0, h * 0.35, w, h * 0.15);
+      ctx.font = 'bold 28px -apple-system, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ff4444';
+      ctx.fillText(this.bossAnnounce, w / 2, h * 0.44);
+      ctx.textAlign = 'left';
+      ctx.globalAlpha = 1;
+    }
   }
 
   renderEnemies(ctx) {
