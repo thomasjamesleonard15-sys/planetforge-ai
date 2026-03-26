@@ -20,6 +20,7 @@ import { Chat } from './chat.js';
 import { IntroCutscene } from './intro-cutscene.js';
 import { BatmanPlanet } from './batman-planet.js';
 import { CoopBoss } from './coop-boss.js';
+import { TaskList } from './task-list.js';
 import { RacingGame } from './racing-game.js';
 
 const STATE = { TITLE: 0, GALAXY: 1, SURFACE: 2, SPACE: 3, CUTSCENE: 4, DEATH: 5, FUEL: 6, QTE: 7, LOBBY: 8, BLACKHOLE: 9, ARCADE: 10, RACE: 11, BATMAN: 12, COOP: 13 };
@@ -55,6 +56,7 @@ export class Game {
     this.newSurfaceBullets = [];
     this.worldSync = new WorldSync();
     this.chat = new Chat();
+    this.tasks = new TaskList();
     this.intro = null;
 
     this.input.onTap = (x, y) => this.handleTap(x, y);
@@ -88,6 +90,7 @@ export class Game {
       return;
     }
 
+    if (this.tasks.handleTap(x, y)) return;
     if (this.multiplayerActive && this.chat.handleTap(x, y)) return;
 
     // Skip cutscenes — only via skip button (bottom-right)
@@ -262,6 +265,7 @@ export class Game {
     this.state = STATE.SURFACE;
     music.setMode(isHome ? 'surface' : 'battle');
     if (isHome) music.playHomeJingle();
+    this.tasks.complete('land1');
     if (this.multiplayerActive && !multiplayer.isHost && this.surface.enemies) {
       this.surface.enemies.syncedByHost = true;
     }
@@ -360,6 +364,7 @@ export class Game {
     this.space.resize(this.width, this.height);
     this.state = STATE.SPACE;
     music.setMode('space');
+    this.tasks.complete('fly');
     if (this.multiplayerActive && !multiplayer.isHost) {
       this.space.aliens.syncedByHost = true;
     }
@@ -376,6 +381,7 @@ export class Game {
 
   update(dt) {
     const move = this.input.getMoveVector();
+    this.tasks.update(dt);
     if (this.state !== STATE.QTE) this.input.yPressed = false;
 
     if (this.state === STATE.TITLE) {
@@ -469,6 +475,7 @@ export class Game {
 
     if (this.state === STATE.GALAXY) {
       this.galaxy.update(dt);
+      if (this.galaxy.currentGalaxy >= 1) this.tasks.complete('galaxy2');
     } else if (this.state === STATE.SURFACE) {
       if (move.x !== 0 || move.y !== 0) {
         this.surface.player.update(dt, move.x, move.y);
@@ -485,6 +492,10 @@ export class Game {
         }
       }
       this.surface.update(dt);
+      if (this.surface.enemies) {
+        if (this.surface.enemies.wave >= 5) this.tasks.complete('wave5');
+        if (this.surface.enemies.wave >= 10) this.tasks.complete('wave10');
+      }
       // Victory cutscene finished — go home
       if (this.surface.victoryCutscene && this.surface.victoryCutscene.done) {
         this.surface.victoryCutscene = null;
@@ -583,6 +594,7 @@ export class Game {
           const won = this.qte.won;
           this.qte = null;
           if (won) {
+            this.tasks.complete('qte');
             this.respawnHome();
           } else {
             this.startDeathCutscene();
@@ -598,6 +610,8 @@ export class Game {
           this.batman.tryShoot(this.input.mouseX, this.input.mouseY);
         }
         this.batman.update(dt);
+        if (this.batman.wave >= 5) this.tasks.complete('batman5');
+        if (this.batman.wave >= 10) this.tasks.complete('batman10');
         if (this.batman.done) {
           this.batman = null;
           this.respawnHome();
@@ -632,6 +646,7 @@ export class Game {
       if (this.race) {
         this.race.update(dt, move.x, move.y);
         if (this.race.done) {
+          if (this.race.won) this.tasks.complete('race');
           this.race = null;
           this.respawnHome();
         }
@@ -642,6 +657,8 @@ export class Game {
         if (this.input.spaceDown) this.coop.tryShoot(this.input.mouseX, this.input.mouseY);
         this.coop.update(dt);
         if (this.multiplayerActive && multiplayer.isHost) this.coop.syncBossState();
+        if (this.coop.bossIndex > 0) this.tasks.complete('coop1');
+        if (this.coop.victory) this.tasks.complete('coopall');
         if (this.coop.done) { this.coop = null; this.respawnHome(); }
       }
     } else if (this.state === STATE.FUEL) {
@@ -672,6 +689,7 @@ export class Game {
     if (this.state === STATE.GALAXY) {
       this.renderStars(ctx);
       this.galaxy.render(ctx, this.width, this.height);
+      this.tasks.render(ctx, this.width, this.height);
     } else if (this.state === STATE.BLACKHOLE) {
       if (this.cutscene) this.cutscene.render(ctx);
     } else if (this.state === STATE.CUTSCENE || this.state === STATE.DEATH) {
@@ -733,6 +751,7 @@ export class Game {
     ctx.fillStyle = music.muted ? '#666' : '#aab';
     ctx.fillText(music.muted ? '🔇' : '🔊', 22, 124);
     ctx.textAlign = 'left';
+    this.tasks.render(ctx, this.width, this.height);
   }
 
   renderMultiplayerHUD(ctx) {
