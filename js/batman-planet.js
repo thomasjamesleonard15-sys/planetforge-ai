@@ -14,19 +14,19 @@ const BAT_WEAPONS = [
 ];
 
 const VILLAINS = [
-  { name: 'Joker Thug', health: 25, speed: 55, damage: 6, radius: 10, color: '#44cc44', reward: 8, hat: 'clown' },
-  { name: 'Penguin Goon', health: 40, speed: 40, damage: 10, radius: 12, color: '#334455', reward: 12, hat: 'tophat' },
-  { name: 'Riddler Bot', health: 15, speed: 80, damage: 4, radius: 8, color: '#44ff44', reward: 6, hat: 'question' },
-  { name: 'Bane Soldier', health: 80, speed: 30, damage: 18, radius: 18, color: '#886644', reward: 20, hat: 'mask' },
-  { name: 'Mr. Freeze Drone', health: 50, speed: 45, damage: 12, radius: 14, color: '#88ccff', reward: 15, hat: 'ice' },
+  { name: 'Joker Thug', health: 35, speed: 65, damage: 8, radius: 10, color: '#44cc44', reward: 8, hat: 'clown' },
+  { name: 'Penguin Goon', health: 55, speed: 50, damage: 12, radius: 12, color: '#334455', reward: 12, hat: 'tophat' },
+  { name: 'Riddler Bot', health: 20, speed: 95, damage: 6, radius: 8, color: '#44ff44', reward: 6, hat: 'question' },
+  { name: 'Bane Soldier', health: 100, speed: 40, damage: 22, radius: 18, color: '#886644', reward: 20, hat: 'mask' },
+  { name: 'Mr. Freeze Drone', health: 65, speed: 55, damage: 15, radius: 14, color: '#88ccff', reward: 15, hat: 'ice' },
 ];
 
 const BOSSES = [
-  { name: 'THE JOKER', health: 500, speed: 55, damage: 25, radius: 28, color: '#22cc44', reward: 100, hat: 'joker', wave: 20, msg: 'THE JOKER HAS ARRIVED!' },
-  { name: 'THE PENGUIN', health: 600, speed: 35, damage: 30, radius: 30, color: '#223344', reward: 120, hat: 'tophat', wave: 40, msg: 'THE PENGUIN WADDLES IN!' },
-  { name: 'THE RIDDLER', health: 400, speed: 75, damage: 20, radius: 24, color: '#22ff22', reward: 110, hat: 'question', wave: 60, msg: 'THE RIDDLER CHALLENGES YOU!' },
-  { name: 'BANE', health: 900, speed: 40, damage: 40, radius: 35, color: '#775533', reward: 150, hat: 'mask', wave: 80, msg: 'BANE WILL BREAK YOU!' },
-  { name: 'MR. FREEZE', health: 700, speed: 45, damage: 35, radius: 30, color: '#66aaee', reward: 130, hat: 'ice', wave: 100, msg: 'MR. FREEZE — CHILL OUT!' },
+  { name: 'THE JOKER', health: 600, speed: 60, damage: 30, radius: 28, color: '#22cc44', reward: 100, hat: 'joker', wave: 10, msg: 'THE JOKER HAS ARRIVED!' },
+  { name: 'THE PENGUIN', health: 700, speed: 40, damage: 35, radius: 30, color: '#223344', reward: 120, hat: 'tophat', wave: 20, msg: 'THE PENGUIN WADDLES IN!' },
+  { name: 'THE RIDDLER', health: 500, speed: 80, damage: 25, radius: 24, color: '#22ff22', reward: 110, hat: 'question', wave: 30, msg: 'THE RIDDLER CHALLENGES YOU!' },
+  { name: 'BANE', health: 1000, speed: 45, damage: 45, radius: 35, color: '#775533', reward: 150, hat: 'mask', wave: 40, msg: 'BANE WILL BREAK YOU!' },
+  { name: 'MR. FREEZE', health: 800, speed: 50, damage: 40, radius: 30, color: '#66aaee', reward: 130, hat: 'ice', wave: 50, msg: 'MR. FREEZE — CHILL OUT!' },
 ];
 
 const MAX_ENEMIES = 40;
@@ -56,6 +56,7 @@ export class BatmanPlanet {
     this.bossAnnounce = '';
     this.bossAnnounceTimer = 0;
     this.finalBoss = false;
+    this.soldiers = 0;
 
     this.enemies = [];
     for (let i = 0; i < MAX_ENEMIES; i++) {
@@ -158,9 +159,9 @@ export class BatmanPlanet {
   }
 
   spawnVillain() {
-    const maxType = Math.min(VILLAINS.length - 1, Math.floor(this.wave / 4));
+    const maxType = Math.min(VILLAINS.length - 1, Math.floor(this.wave / 3));
     const t = VILLAINS[Math.floor(Math.random() * (maxType + 1))];
-    this.spawnEnemy(t, this.wave * 3);
+    this.spawnEnemy(t, this.wave * 6);
   }
 
   spawnBoss(boss) {
@@ -220,17 +221,21 @@ export class BatmanPlanet {
     this.waveTimer -= dt;
     if (!this.bossActive && this.waveTimer <= 0 && this.spawnQueue <= 0 && this.activeEnemyCount() === 0) {
       this.wave++;
+      if (this.wave % 5 === 0) {
+        this.soldiers++;
+        this.hud.showMessage(`+1 Soldier! (${this.soldiers} total)`);
+      }
       const boss = BOSSES.find(b => b.wave === this.wave);
-      if (this.wave > 100 && !this.finalBoss) {
+      if (this.wave > 50 && !this.finalBoss) {
         this.spawnAllBosses();
         this.spawnQueue = 0;
       } else if (boss) {
         this.spawnBoss(boss);
-        this.spawnQueue = 3 + Math.floor(this.wave / 10);
+        this.spawnQueue = 5 + Math.floor(this.wave / 5);
         this.waveTimer = 999;
       } else {
-        this.spawnQueue = 4 + this.wave * 2;
-        this.waveTimer = 15 + this.wave;
+        this.spawnQueue = 6 + this.wave * 3;
+        this.waveTimer = 12 + this.wave;
         this.hud.showMessage(`Wave ${this.wave} — Gotham needs you!`);
       }
       this.spawnCooldown = 0;
@@ -241,7 +246,7 @@ export class BatmanPlanet {
       if (this.spawnCooldown <= 0) {
         this.spawnVillain();
         this.spawnQueue--;
-        this.spawnCooldown = 0.5;
+        this.spawnCooldown = 0.35;
       }
     }
 
@@ -408,6 +413,8 @@ export class BatmanPlanet {
     ctx.fillText(`Kills: ${this.kills}`, 120, 28);
     ctx.fillStyle = '#ffaa44';
     ctx.fillText(`Score: ${this.score}`, 220, 28);
+    ctx.fillStyle = '#88aaff';
+    ctx.fillText(`Soldiers: ${this.soldiers}`, 360, 28);
     ctx.fillStyle = this.weapon.color;
     ctx.fillText(this.weapon.name, w - 140, 28);
 
