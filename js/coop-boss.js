@@ -278,8 +278,28 @@ export class CoopBoss {
 
   render(ctx) {
     const w = this.screenW, h = this.screenH;
-    ctx.fillStyle = '#08080f';
+    const t = Date.now() / 1000;
+
+    // Arena background
+    const bg = ctx.createRadialGradient(w / 2, h / 2, 50, w / 2, h / 2, Math.max(w, h));
+    bg.addColorStop(0, '#0c0815');
+    bg.addColorStop(0.5, '#06040a');
+    bg.addColorStop(1, '#020204');
+    ctx.fillStyle = bg;
     ctx.fillRect(0, 0, w, h);
+
+    // Arena floor grid
+    if (this.boss) {
+      const bs = this.camera.worldToScreen(this.boss.x, this.boss.y);
+      ctx.strokeStyle = `rgba(${this.bossIndex === 0 ? '255,68,136' : this.bossIndex === 1 ? '136,68,255' : '255,136,0'},0.06)`;
+      ctx.lineWidth = 1;
+      for (let i = -20; i < 20; i++) {
+        const gx = bs.x + i * 60 - (this.camera.x % 60);
+        ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, h); ctx.stroke();
+        const gy = i * 60 - (this.camera.y % 60);
+        ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w, gy); ctx.stroke();
+      }
+    }
 
     if (this.boss) this.renderBoss(ctx);
     this.player.render(ctx, this.camera);
@@ -319,50 +339,191 @@ export class CoopBoss {
     const b = this.boss;
     const s = this.camera.worldToScreen(b.x, b.y);
     const shake = b.shakeTimer > 0 ? (Math.random() - 0.5) * b.shakeTimer : 0;
+    const t = Date.now() / 1000;
+    const bx = s.x + shake, by = s.y + shake;
 
+    // Laser beam
     if (this.bossLaser) {
       const la = this.bossLaser.angle;
-      ctx.strokeStyle = `rgba(255,50,50,${0.5 + Math.sin(Date.now() / 50) * 0.3})`;
-      ctx.lineWidth = 8;
-      ctx.beginPath();
-      ctx.moveTo(s.x, s.y);
-      ctx.lineTo(s.x + Math.cos(la) * 2000, s.y + Math.sin(la) * 2000);
+      const pulse = 0.5 + Math.sin(t * 30) * 0.3;
+      ctx.globalAlpha = 0.15;
+      ctx.strokeStyle = '#ff0000';
+      ctx.lineWidth = 30;
+      ctx.beginPath(); ctx.moveTo(bx, by);
+      ctx.lineTo(bx + Math.cos(la) * 2000, by + Math.sin(la) * 2000);
       ctx.stroke();
-      ctx.strokeStyle = '#ffaaaa';
+      ctx.globalAlpha = pulse;
+      ctx.strokeStyle = '#ff4444';
+      ctx.lineWidth = 12;
+      ctx.beginPath(); ctx.moveTo(bx, by);
+      ctx.lineTo(bx + Math.cos(la) * 2000, by + Math.sin(la) * 2000);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = '#ffcccc';
       ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(s.x, s.y);
-      ctx.lineTo(s.x + Math.cos(la) * 2000, s.y + Math.sin(la) * 2000);
+      ctx.beginPath(); ctx.moveTo(bx, by);
+      ctx.lineTo(bx + Math.cos(la) * 2000, by + Math.sin(la) * 2000);
       ctx.stroke();
     }
 
-    const glow = ctx.createRadialGradient(s.x, s.y, b.radius * 0.5, s.x, s.y, b.radius * 2);
-    glow.addColorStop(0, b.color + '44');
+    // Outer glow
+    const glow = ctx.createRadialGradient(bx, by, b.radius * 0.3, bx, by, b.radius * 2.5);
+    glow.addColorStop(0, b.color + '55');
+    glow.addColorStop(0.5, b.color + '18');
     glow.addColorStop(1, 'transparent');
     ctx.fillStyle = glow;
     ctx.beginPath();
-    ctx.arc(s.x, s.y, b.radius * 2, 0, Math.PI * 2);
+    ctx.arc(bx, by, b.radius * 2.5, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.beginPath();
-    ctx.arc(s.x + shake, s.y + shake, b.radius, 0, Math.PI * 2);
-    ctx.fillStyle = b.hitFlash > 0 ? '#ffffff' : b.color;
-    ctx.fill();
-    ctx.strokeStyle = '#ffffff44';
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    // Boss-specific body
+    if (this.bossIndex === 0) {
+      // TITAN WORM — segmented worm body
+      for (let i = 4; i >= 0; i--) {
+        const segA = t * 2 + i * 0.8;
+        const segX = bx - Math.cos(segA) * i * 18;
+        const segY = by - Math.sin(segA * 0.7) * i * 12;
+        const segR = b.radius * (1 - i * 0.12);
+        ctx.beginPath();
+        ctx.arc(segX, segY, segR, 0, Math.PI * 2);
+        const segGrad = ctx.createRadialGradient(segX - 3, segY - 3, 2, segX, segY, segR);
+        segGrad.addColorStop(0, b.hitFlash > 0 ? '#ffaacc' : '#ff6699');
+        segGrad.addColorStop(1, b.hitFlash > 0 ? '#ffffff' : b.color);
+        ctx.fillStyle = segGrad;
+        ctx.fill();
+        ctx.strokeStyle = '#ff88aa44';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+      // Mouth
+      ctx.beginPath();
+      ctx.arc(bx, by, b.radius * 0.5, 0.3 + Math.sin(t * 5) * 0.2, Math.PI - 0.3 - Math.sin(t * 5) * 0.2);
+      ctx.strokeStyle = '#220000';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+      // Teeth
+      for (let i = 0; i < 5; i++) {
+        const ta = 0.5 + i * 0.4;
+        ctx.fillStyle = '#ffdddd';
+        ctx.beginPath();
+        ctx.moveTo(bx + Math.cos(ta) * b.radius * 0.45, by + Math.sin(ta) * b.radius * 0.45);
+        ctx.lineTo(bx + Math.cos(ta) * b.radius * 0.3, by + Math.sin(ta + 0.15) * b.radius * 0.3);
+        ctx.lineTo(bx + Math.cos(ta) * b.radius * 0.3, by + Math.sin(ta - 0.15) * b.radius * 0.3);
+        ctx.fill();
+      }
+    } else if (this.bossIndex === 1) {
+      // VOID KING — floating dark figure with crown and swirling void
+      for (let i = 0; i < 6; i++) {
+        const ra = t * 1.5 + i * Math.PI / 3;
+        const rx = bx + Math.cos(ra) * b.radius * 1.3;
+        const ry = by + Math.sin(ra) * b.radius * 1.3;
+        ctx.beginPath();
+        ctx.arc(rx, ry, 5 + Math.sin(t * 3 + i) * 2, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(136,68,255,${0.3 + Math.sin(t * 2 + i) * 0.2})`;
+        ctx.fill();
+      }
+      // Body — dark robed figure
+      ctx.beginPath();
+      ctx.arc(bx, by, b.radius, 0, Math.PI * 2);
+      const voidGrad = ctx.createRadialGradient(bx, by - 5, 3, bx, by, b.radius);
+      voidGrad.addColorStop(0, b.hitFlash > 0 ? '#ccaaff' : '#4422aa');
+      voidGrad.addColorStop(1, b.hitFlash > 0 ? '#ffffff' : '#110033');
+      ctx.fillStyle = voidGrad;
+      ctx.fill();
+      // Robe
+      ctx.fillStyle = '#1a0033';
+      ctx.beginPath();
+      ctx.moveTo(bx - b.radius * 0.8, by);
+      ctx.lineTo(bx - b.radius, by + b.radius * 1.2);
+      ctx.lineTo(bx, by + b.radius * 0.8);
+      ctx.lineTo(bx + b.radius, by + b.radius * 1.2);
+      ctx.lineTo(bx + b.radius * 0.8, by);
+      ctx.closePath();
+      ctx.fill();
+      // Crown
+      ctx.fillStyle = '#ffdd44';
+      for (let i = 0; i < 5; i++) {
+        const ca = -Math.PI / 2 + (i - 2) * 0.35;
+        ctx.beginPath();
+        ctx.moveTo(bx + Math.cos(ca) * b.radius * 0.6, by + Math.sin(ca) * b.radius * 0.6);
+        ctx.lineTo(bx + Math.cos(ca) * (b.radius + 12), by + Math.sin(ca) * (b.radius + 12));
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#ffdd44';
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(bx + Math.cos(ca) * (b.radius + 12), by + Math.sin(ca) * (b.radius + 12), 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // Glowing eyes
+      const eyeGlow1 = ctx.createRadialGradient(bx - 10, by - 5, 1, bx - 10, by - 5, 12);
+      eyeGlow1.addColorStop(0, '#ff00ff');
+      eyeGlow1.addColorStop(1, 'transparent');
+      ctx.fillStyle = eyeGlow1;
+      ctx.fillRect(bx - 22, by - 17, 24, 24);
+      const eyeGlow2 = ctx.createRadialGradient(bx + 10, by - 5, 1, bx + 10, by - 5, 12);
+      eyeGlow2.addColorStop(0, '#ff00ff');
+      eyeGlow2.addColorStop(1, 'transparent');
+      ctx.fillStyle = eyeGlow2;
+      ctx.fillRect(bx - 2, by - 17, 24, 24);
+    } else {
+      // STAR EATER — massive fiery sphere with orbiting debris
+      for (let i = 0; i < 8; i++) {
+        const oa = t * 0.8 + i * Math.PI / 4;
+        const od = b.radius * (1.4 + Math.sin(t + i) * 0.3);
+        const ox = bx + Math.cos(oa) * od;
+        const oy = by + Math.sin(oa) * od;
+        ctx.beginPath();
+        ctx.arc(ox, oy, 4 + Math.sin(t * 2 + i) * 2, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,${100 + i * 15},0,${0.5 + Math.sin(t + i) * 0.3})`;
+        ctx.fill();
+      }
+      // Core
+      ctx.beginPath();
+      ctx.arc(bx, by, b.radius, 0, Math.PI * 2);
+      const fireGrad = ctx.createRadialGradient(bx - 8, by - 8, 5, bx, by, b.radius);
+      fireGrad.addColorStop(0, b.hitFlash > 0 ? '#ffffff' : '#ffee44');
+      fireGrad.addColorStop(0.4, b.hitFlash > 0 ? '#ffddaa' : '#ff8800');
+      fireGrad.addColorStop(1, b.hitFlash > 0 ? '#ffaaaa' : '#881100');
+      ctx.fillStyle = fireGrad;
+      ctx.fill();
+      // Surface texture
+      for (let i = 0; i < 6; i++) {
+        const sa = t * 0.5 + i * 1.2;
+        const sr = b.radius * (0.3 + Math.sin(sa * 2) * 0.15);
+        const sx2 = bx + Math.cos(sa) * sr;
+        const sy2 = by + Math.sin(sa) * sr;
+        ctx.beginPath();
+        ctx.arc(sx2, sy2, b.radius * 0.15, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(40,0,0,${0.3 + Math.sin(t + i * 2) * 0.15})`;
+        ctx.fill();
+      }
+      // Mouth — fiery maw
+      ctx.beginPath();
+      ctx.arc(bx, by + b.radius * 0.15, b.radius * 0.4, 0.2, Math.PI - 0.2);
+      ctx.strokeStyle = '#220000';
+      ctx.lineWidth = 5;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(bx, by + b.radius * 0.15, b.radius * 0.35, 0.3, Math.PI - 0.3);
+      ctx.fillStyle = '#ff4400';
+      ctx.fill();
+    }
 
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(s.x - b.radius * 0.3 + shake, s.y - b.radius * 0.2, b.radius * 0.2, 0, Math.PI * 2);
-    ctx.arc(s.x + b.radius * 0.3 + shake, s.y - b.radius * 0.2, b.radius * 0.2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#ff0000';
-    ctx.beginPath();
-    ctx.arc(s.x - b.radius * 0.3 + shake, s.y - b.radius * 0.2, b.radius * 0.1, 0, Math.PI * 2);
-    ctx.arc(s.x + b.radius * 0.3 + shake, s.y - b.radius * 0.2, b.radius * 0.1, 0, Math.PI * 2);
-    ctx.fill();
+    // Eyes (shared for worm and star eater)
+    if (this.bossIndex !== 1) {
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(bx - b.radius * 0.3, by - b.radius * 0.2, b.radius * 0.18, 0, Math.PI * 2);
+      ctx.arc(bx + b.radius * 0.3, by - b.radius * 0.2, b.radius * 0.18, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = this.bossIndex === 2 ? '#000' : '#ff0000';
+      ctx.beginPath();
+      ctx.arc(bx - b.radius * 0.3, by - b.radius * 0.2, b.radius * 0.09, 0, Math.PI * 2);
+      ctx.arc(bx + b.radius * 0.3, by - b.radius * 0.2, b.radius * 0.09, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
+    // HP bar
     const hpW = 200, hpH = 14;
     const hpX = this.screenW / 2 - hpW / 2, hpY = 60;
     ctx.fillStyle = 'rgba(0,0,0,0.7)';
