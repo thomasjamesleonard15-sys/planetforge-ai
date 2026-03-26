@@ -221,7 +221,7 @@ export class Game {
       this.batman.resize(this.width, this.height);
       this.cutscene = null;
       this.state = STATE.BATMAN;
-      music.setMode('battle');
+      music.setMode('batman');
       return;
     }
     const isHome = planetName === 'Terra Prime';

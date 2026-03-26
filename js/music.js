@@ -9,6 +9,7 @@ const SCALES = {
   space: [0, 2, 4, 7, 9, 12, 14, 16],           // major pentatonic
   surface: [0, 2, 3, 5, 7, 8, 10, 12],          // natural minor
   battle: [0, 1, 4, 5, 7, 8, 11, 12],           // harmonic minor
+  batman: [0, 1, 3, 5, 7, 8, 10, 12],           // phrygian — dark and dramatic
 };
 
 const BASE_NOTES = {
@@ -16,6 +17,7 @@ const BASE_NOTES = {
   space: 65.41,  // C2
   surface: 73.42, // D2
   battle: 61.74, // B1
+  batman: 48.99, // G1 — deep and dark
 };
 
 export class MusicSystem {
@@ -43,6 +45,7 @@ export class MusicSystem {
     if (this.mode === mode) return;
     this.mode = mode;
     this.beat = 0;
+    this.bpm = mode === 'batman' ? 95 : 72;
   }
 
   toggle() {
@@ -77,6 +80,7 @@ export class MusicSystem {
   }
 
   playBeat(time) {
+    if (this.mode === 'batman') { this.playBatmanBeat(time); return; }
     const scale = SCALES[this.mode] || SCALES.galaxy;
     const base = BASE_NOTES[this.mode] || 55;
     const beat = this.beat;
@@ -126,6 +130,75 @@ export class MusicSystem {
     } else {
       if (beat % 8 === 0) this.playNoise(time, 0.1, 0.06, 600);
       if (beat % 8 === 4 && Math.random() > 0.4) this.playNoise(time, 0.06, 0.04, 2000);
+    }
+  }
+
+  playBatmanBeat(time) {
+    const scale = SCALES.batman;
+    const base = BASE_NOTES.batman;
+    const beat = this.beat;
+
+    // Deep power bass — heavy hits on downbeats
+    if (beat % 8 === 0) {
+      this.playTone(base, time, 2, 'sawtooth', 0.2, 0.02);
+      this.playTone(base * 0.5, time, 2.5, 'sine', 0.25, 0.01);
+      this.playTone(base * 1.5, time, 1.5, 'triangle', 0.1, 0.02);
+    }
+
+    // Pounding war drums
+    if (beat % 4 === 0) {
+      this.playNoise(time, 0.15, 0.2, 100);
+      this.playTone(base * 0.25, time, 0.3, 'sine', 0.3, 0);
+    }
+    if (beat % 4 === 2) {
+      this.playNoise(time, 0.1, 0.15, 150);
+    }
+    // Aggressive snare hits
+    if (beat % 8 === 4) {
+      this.playNoise(time, 0.08, 0.18, 3000);
+      this.playNoise(time + 0.01, 0.06, 0.1, 5000);
+    }
+    // Fast hi-hat drive
+    if (beat % 2 === 0) {
+      this.playNoise(time, 0.03, 0.06, 8000);
+    }
+    if (beat % 2 === 1 && Math.random() > 0.3) {
+      this.playNoise(time, 0.02, 0.04, 10000);
+    }
+
+    // Dark brass stabs — power fifth intervals
+    if (beat % 16 === 0 || beat % 16 === 6) {
+      const root = base * 2;
+      const fifth = root * Math.pow(2, 7 / 12);
+      this.playTone(root, time, 0.6, 'sawtooth', 0.12, 0.03);
+      this.playTone(fifth, time, 0.6, 'sawtooth', 0.08, 0.03);
+      this.playTone(root * 2, time, 0.4, 'square', 0.05, 0.03);
+    }
+
+    // Dramatic string melody
+    if (beat % 2 === 0 && Math.random() > 0.2) {
+      const patterns = [0, 3, 5, 7, 5, 3, 0, 7, 5, 3, 1, 0, 3, 5, 7, 5];
+      const idx = patterns[beat % patterns.length] + ((beat / 16 | 0) % 2);
+      const note = base * 4 * Math.pow(2, scale[idx % scale.length] / 12);
+      this.playTone(note, time, 0.35, 'sawtooth', 0.09, 0.02);
+      this.playTone(note * 1.003, time, 0.35, 'sawtooth', 0.06, 0.02);
+    }
+
+    // Ominous low pad — shifts every 2 measures
+    if (beat === 0 || beat === this.measureLen * 2) {
+      const chordIdx = beat === 0 ? 0 : 3;
+      const root = base * 2 * Math.pow(2, scale[chordIdx] / 12);
+      const third = base * 2 * Math.pow(2, scale[(chordIdx + 2) % scale.length] / 12);
+      const fifth = base * 2 * Math.pow(2, scale[(chordIdx + 4) % scale.length] / 12);
+      this.playPad(root, time, 4, 0.07);
+      this.playPad(third, time, 4, 0.05);
+      this.playPad(fifth, time, 4, 0.05);
+    }
+
+    // Tension risers on offbeats
+    if (beat % 8 === 3 || beat % 8 === 7) {
+      const note = base * 3 * Math.pow(2, scale[(beat * 3) % scale.length] / 12);
+      this.playTone(note, time, 0.2, 'square', 0.06, 0.01);
     }
   }
 
