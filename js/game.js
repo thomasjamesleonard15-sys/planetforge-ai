@@ -18,9 +18,10 @@ import { BlackHoleCutscene } from './blackhole-cutscene.js';
 import { ArcadeMenu } from './arcade-menu.js';
 import { Chat } from './chat.js';
 import { IntroCutscene } from './intro-cutscene.js';
+import { BatmanPlanet } from './batman-planet.js';
 import { RacingGame } from './racing-game.js';
 
-const STATE = { TITLE: 0, GALAXY: 1, SURFACE: 2, SPACE: 3, CUTSCENE: 4, DEATH: 5, FUEL: 6, QTE: 7, LOBBY: 8, BLACKHOLE: 9, ARCADE: 10, RACE: 11 };
+const STATE = { TITLE: 0, GALAXY: 1, SURFACE: 2, SPACE: 3, CUTSCENE: 4, DEATH: 5, FUEL: 6, QTE: 7, LOBBY: 8, BLACKHOLE: 9, ARCADE: 10, RACE: 11, BATMAN: 12 };
 
 export class Game {
   constructor(canvas) {
@@ -35,6 +36,7 @@ export class Game {
     this.qte = null;
     this.arcade = null;
     this.race = null;
+    this.batman = null;
     this.cameFromSpace = false;
     this.earnedSoldiers = 0;
     this.cutscene = null;
@@ -117,6 +119,17 @@ export class Game {
       return;
     }
 
+    if (this.state === STATE.BATMAN) {
+      if (x >= 12 && x <= 92 && y >= 60 && y <= 96) {
+        this.batman = null; this.respawnHome(); return;
+      }
+      if (this.batman) {
+        if (this.batman.gameOver) { this.batman = null; this.respawnHome(); return; }
+        this.batman.handleTouchStart(x, y);
+      }
+      return;
+    }
+
     if (this.state === STATE.LOBBY) {
       if (this.lobby) this.lobby.handleTap(x, y);
       return;
@@ -164,6 +177,8 @@ export class Game {
       this.space.handleTouchMove(x, y);
     } else if (this.state === STATE.RACE && this.race) {
       this.race.handleMove(x, y);
+    } else if (this.state === STATE.BATMAN && this.batman) {
+      this.batman.handleTouchMove(x, y);
     }
   }
 
@@ -174,6 +189,8 @@ export class Game {
       this.space.handleTouchEnd();
     } else if (this.state === STATE.RACE && this.race) {
       this.race.handleEnd();
+    } else if (this.state === STATE.BATMAN && this.batman) {
+      this.batman.handleTouchEnd();
     }
   }
 
@@ -197,6 +214,14 @@ export class Game {
       this.arcade = new ArcadeMenu(this.width, this.height);
       this.cutscene = null;
       this.state = STATE.ARCADE;
+      return;
+    }
+    if (planetName === 'Batplanet') {
+      this.batman = new BatmanPlanet();
+      this.batman.resize(this.width, this.height);
+      this.cutscene = null;
+      this.state = STATE.BATMAN;
+      music.setMode('battle');
       return;
     }
     const isHome = planetName === 'Terra Prime';
@@ -545,6 +570,20 @@ export class Game {
           }
         }
       }
+    } else if (this.state === STATE.BATMAN) {
+      if (this.batman) {
+        if (move.x !== 0 || move.y !== 0) {
+          this.batman.player.update(dt, move.x, move.y);
+        }
+        if (this.input.spaceDown) {
+          this.batman.tryShoot(this.input.mouseX, this.input.mouseY);
+        }
+        this.batman.update(dt);
+        if (this.batman.done) {
+          this.batman = null;
+          this.respawnHome();
+        }
+      }
     } else if (this.state === STATE.ARCADE) {
       if (this.arcade) {
         this.arcade.update(dt);
@@ -605,6 +644,9 @@ export class Game {
       if (this.cutscene) this.cutscene.render(ctx);
     } else if (this.state === STATE.CUTSCENE || this.state === STATE.DEATH) {
       if (this.cutscene) this.cutscene.render(ctx);
+    } else if (this.state === STATE.BATMAN) {
+      if (this.batman) this.batman.render(ctx);
+      this.renderBackButton(ctx);
     } else if (this.state === STATE.ARCADE) {
       if (this.arcade) this.arcade.render(ctx);
     } else if (this.state === STATE.RACE) {

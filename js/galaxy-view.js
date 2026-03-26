@@ -34,6 +34,7 @@ export class GalaxyView {
     this.addGalaxy();
     this.galaxies[0].planets[0].name = 'Terra Prime';
     this.addPlanet('Gas Station');
+    this.addPlanet('Batplanet');
 
     // Create second galaxy
     this.addGalaxy();
