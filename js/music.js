@@ -200,6 +200,52 @@ export class MusicSystem {
       const note = base * 3 * Math.pow(2, scale[(beat * 3) % scale.length] / 12);
       this.playTone(note, time, 0.2, 'square', 0.06, 0.01);
     }
+
+    // Eerie whisper tones — high detuned sine ghosts
+    if (beat % 16 === 0 && Math.random() > 0.4) {
+      const ghost = base * 8 * Math.pow(2, scale[Math.floor(Math.random() * scale.length)] / 12);
+      this.playTone(ghost, time, 2.5, 'sine', 0.03, 0.8);
+      this.playTone(ghost * 1.01, time + 0.3, 2, 'sine', 0.02, 1);
+    }
+
+    // Reverse swell — volume builds up then cuts
+    if (beat % 32 === 14) {
+      const swellNote = base * 3;
+      this.playTone(swellNote, time, 1.5, 'sawtooth', 0.0, 0.01);
+      if (ctx) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.value = swellNote;
+        gain.gain.setValueAtTime(0.001, time);
+        gain.gain.exponentialRampToValueAtTime(0.12, time + 1.4);
+        gain.gain.setValueAtTime(0, time + 1.41);
+        osc.connect(gain);
+        gain.connect(masterGain);
+        osc.start(time);
+        osc.stop(time + 1.5);
+        nodes.push(osc);
+      }
+    }
+
+    // Low rumble pulses — sub bass that throbs
+    if (beat % 6 === 0) {
+      this.playTone(base * 0.25, time, 0.8, 'sine', 0.15, 0.2);
+    }
+
+    // Dissonant stinger — random chromatic clash
+    if (beat % 24 === 11) {
+      const d1 = base * 4 * Math.pow(2, 1 / 12);
+      const d2 = base * 4 * Math.pow(2, 6 / 12);
+      this.playTone(d1, time, 0.4, 'square', 0.05, 0.01);
+      this.playTone(d2, time, 0.4, 'square', 0.05, 0.01);
+    }
+
+    // Heartbeat — double thump
+    if (beat % 16 === 0) {
+      this.playTone(base * 0.5, time, 0.12, 'sine', 0.2, 0);
+      this.playTone(base * 0.5, time + 0.18, 0.1, 'sine', 0.15, 0);
+    }
   }
 
   melodyIndex(beat) {
