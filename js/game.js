@@ -19,9 +19,10 @@ import { ArcadeMenu } from './arcade-menu.js';
 import { Chat } from './chat.js';
 import { IntroCutscene } from './intro-cutscene.js';
 import { BatmanPlanet } from './batman-planet.js';
+import { CoopBoss } from './coop-boss.js';
 import { RacingGame } from './racing-game.js';
 
-const STATE = { TITLE: 0, GALAXY: 1, SURFACE: 2, SPACE: 3, CUTSCENE: 4, DEATH: 5, FUEL: 6, QTE: 7, LOBBY: 8, BLACKHOLE: 9, ARCADE: 10, RACE: 11, BATMAN: 12 };
+const STATE = { TITLE: 0, GALAXY: 1, SURFACE: 2, SPACE: 3, CUTSCENE: 4, DEATH: 5, FUEL: 6, QTE: 7, LOBBY: 8, BLACKHOLE: 9, ARCADE: 10, RACE: 11, BATMAN: 12, COOP: 13 };
 
 export class Game {
   constructor(canvas) {
@@ -37,6 +38,7 @@ export class Game {
     this.arcade = null;
     this.race = null;
     this.batman = null;
+    this.coop = null;
     this.cameFromSpace = false;
     this.earnedSoldiers = 0;
     this.cutscene = null;
@@ -119,6 +121,17 @@ export class Game {
       return;
     }
 
+    if (this.state === STATE.COOP) {
+      if (x >= 12 && x <= 92 && y >= 60 && y <= 96) {
+        this.coop = null; this.respawnHome(); return;
+      }
+      if (this.coop) {
+        if (this.coop.gameOver || this.coop.done) { this.coop = null; this.respawnHome(); return; }
+        this.coop.handleTouchStart(x, y);
+      }
+      return;
+    }
+
     if (this.state === STATE.BATMAN) {
       if (x >= 12 && x <= 92 && y >= 60 && y <= 96) {
         this.batman = null; this.respawnHome(); return;
@@ -179,6 +192,8 @@ export class Game {
       this.race.handleMove(x, y);
     } else if (this.state === STATE.BATMAN && this.batman) {
       this.batman.handleTouchMove(x, y);
+    } else if (this.state === STATE.COOP && this.coop) {
+      this.coop.handleTouchMove(x, y);
     }
   }
 
@@ -191,6 +206,8 @@ export class Game {
       this.race.handleEnd();
     } else if (this.state === STATE.BATMAN && this.batman) {
       this.batman.handleTouchEnd();
+    } else if (this.state === STATE.COOP && this.coop) {
+      this.coop.handleTouchEnd();
     }
   }
 
@@ -322,6 +339,8 @@ export class Game {
         this.worldSync.applySurface(data, this.surface.enemies);
       } else if (data.action === 'world-space' && this.state === STATE.SPACE && this.space) {
         this.worldSync.applySpace(data, this.space);
+      } else if (data.action === 'coop-boss' && this.state === STATE.COOP && this.coop) {
+        this.coop.applyHostState(data);
       }
     };
   }
@@ -598,6 +617,11 @@ export class Game {
             this.race = new RacingGame(this.width, this.height);
             this.state = STATE.RACE;
             music.setMode('space');
+          } else if (choice === 'coop') {
+            this.coop = new CoopBoss(this.width, this.height);
+            this.coop.resize(this.width, this.height);
+            this.state = STATE.COOP;
+            music.setMode('battle');
           } else {
             this.state = STATE.GALAXY;
             music.setMode('galaxy');
@@ -611,6 +635,14 @@ export class Game {
           this.race = null;
           this.respawnHome();
         }
+      }
+    } else if (this.state === STATE.COOP) {
+      if (this.coop) {
+        if (move.x !== 0 || move.y !== 0) this.coop.player.update(dt, move.x, move.y);
+        if (this.input.spaceDown) this.coop.tryShoot(this.input.mouseX, this.input.mouseY);
+        this.coop.update(dt);
+        if (this.multiplayerActive && multiplayer.isHost) this.coop.syncBossState();
+        if (this.coop.done) { this.coop = null; this.respawnHome(); }
       }
     } else if (this.state === STATE.FUEL) {
       if (this.cutscene) {
@@ -644,6 +676,12 @@ export class Game {
       if (this.cutscene) this.cutscene.render(ctx);
     } else if (this.state === STATE.CUTSCENE || this.state === STATE.DEATH) {
       if (this.cutscene) this.cutscene.render(ctx);
+    } else if (this.state === STATE.COOP) {
+      if (this.coop) {
+        this.coop.render(ctx);
+        if (this.multiplayerActive) this.remotePlayers.render(ctx, this.coop.camera);
+      }
+      this.renderBackButton(ctx);
     } else if (this.state === STATE.BATMAN) {
       if (this.batman) this.batman.render(ctx);
       this.renderBackButton(ctx);

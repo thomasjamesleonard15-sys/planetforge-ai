@@ -60,6 +60,7 @@ export class ArcadeMenu {
     const games = [
       { id: 'qte', name: 'BOSS FIGHT', desc: 'Spam Y to defeat Dark Lord Vexor!', color: '#ff4444', icon: '👊' },
       { id: 'race', name: 'SPACE RACE', desc: 'Fly through rings as fast as you can!', color: '#44ff88', icon: '🏁' },
+      { id: 'coop', name: 'CO-OP BOSS', desc: 'Fight mega bosses with friends!', color: '#ff88ff', icon: '🤝' },
     ];
 
     const cardW = Math.min(280, w * 0.7);
