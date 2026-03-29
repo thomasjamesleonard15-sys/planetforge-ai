@@ -40,8 +40,12 @@ export class DMTools {
     this.playerChoices.clear();
   }
 
-  receiveChoice(peerId, choiceIdx) {
-    this.playerChoices.set(peerId, choiceIdx);
+  receiveChoice(peerId, choiceIdx, custom) {
+    if (custom) {
+      this.playerChoices.set(peerId, { idx: -1, custom });
+    } else {
+      this.playerChoices.set(peerId, { idx: choiceIdx });
+    }
   }
 
   receiveSheet(peerId, sheet) {
@@ -144,12 +148,18 @@ export class DMTools {
       ctx.fillStyle = '#aa88ff';
       ctx.fillText('Responses:', w / 2, ry);
       ry += 18;
-      for (const [pid, idx] of this.playerChoices) {
+      for (const [pid, val] of this.playerChoices) {
         const sheet = this.playerSheets.get(pid);
         const name = sheet ? sheet.name : 'Player';
-        const choice = idx === 0 ? (this.choice1 || 'Choice 1') : (this.choice2 || 'Choice 2');
-        ctx.fillStyle = '#ddd';
-        ctx.fillText(`${name} chose: "${choice}"`, w / 2, ry);
+        let choice;
+        if (val.custom) {
+          choice = val.custom;
+          ctx.fillStyle = '#ffaa44';
+        } else {
+          choice = val.idx === 0 ? (this.choice1 || 'Choice 1') : (this.choice2 || 'Choice 2');
+          ctx.fillStyle = '#ddd';
+        }
+        ctx.fillText(`${name}: "${choice}"`, w / 2, ry);
         ry += 16;
       }
     }

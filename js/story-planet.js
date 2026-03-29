@@ -52,6 +52,15 @@ export class StoryPlanet {
     this.dmStoryText = '';
     this.dmChoice1 = '';
     this.dmChoice2 = '';
+    this.customInput = false;
+    this.customText = '';
+    this.customBtnRect = { x: 0, y: 0, w: 0, h: 0 };
+    this.customSendRect = { x: 0, y: 0, w: 0, h: 0 };
+    this.customKeyRects = [];
+    this.customSpaceRect = { x: 0, y: 0, w: 0, h: 0 };
+    this.customDelRect = { x: 0, y: 0, w: 0, h: 0 };
+    this.customShift = false;
+    this.customShiftRect = { x: 0, y: 0, w: 0, h: 0 };
   }
 
   speak(text, pitch, rate, vol) {
@@ -146,6 +155,23 @@ export class StoryPlanet {
     }
 
     if (this.phase === 'dm-wait') {
+      if (this.customInput) {
+        if (this.hitR(x, y, this.customSendRect) && this.customText.length > 0) {
+          this.sendCustomAction(this.customText);
+          return;
+        }
+        if (this.hitR(x, y, this.customDelRect)) { this.customText = this.customText.slice(0, -1); return; }
+        if (this.hitR(x, y, this.customSpaceRect)) { this.customText += ' '; return; }
+        if (this.hitR(x, y, this.customShiftRect)) { this.customShift = !this.customShift; return; }
+        for (const kr of this.customKeyRects) {
+          if (this.hitR(x, y, kr)) {
+            this.customText += this.customShift ? kr.key.toUpperCase() : kr.key;
+            this.customShift = false;
+            return;
+          }
+        }
+        return;
+      }
       if (this.choices.length > 0) {
         for (let i = 0; i < this.choiceRects.length; i++) {
           const r = this.choiceRects[i];
@@ -154,9 +180,17 @@ export class StoryPlanet {
               if (conn.open) try { conn.send({ type: 'player-choice', idx: i }); } catch (_) {}
             }
             this.choices = [];
+            this.customInput = false;
             this.waitingForDM = true;
             this.showDialogue('You', i === 0 ? this.dmChoice1 : this.dmChoice2, '', null);
+            return;
           }
+        }
+        const cb = this.customBtnRect;
+        if (cb.w > 0 && x >= cb.x && x <= cb.x + cb.w && y >= cb.y && y <= cb.y + cb.h) {
+          this.customInput = true;
+          this.customText = '';
+          return;
         }
       }
       return;
@@ -194,7 +228,26 @@ export class StoryPlanet {
   handleKey(key) {
     if (this.phase === 'dm' && this.dmTools) return this.dmTools.handleKey(key);
     if (this.phase === 'char') return this.charSheet.handleKey(key);
+    if (this.phase === 'dm-wait' && this.customInput) {
+      if (key === 'Enter' && this.customText.length > 0) { this.sendCustomAction(this.customText); return true; }
+      if (key === 'Backspace') { this.customText = this.customText.slice(0, -1); return true; }
+      if (key === 'Escape') { this.customInput = false; return true; }
+      if (key.length === 1 && this.customText.length < 100) { this.customText += key; return true; }
+      return true;
+    }
     return false;
+  }
+
+  hitR(x, y, r) { return r.w > 0 && x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h; }
+
+  sendCustomAction(text) {
+    for (const conn of multiplayer.connections) {
+      if (conn.open) try { conn.send({ type: 'player-choice', idx: -1, custom: text }); } catch (_) {}
+    }
+    this.choices = [];
+    this.customInput = false;
+    this.waitingForDM = true;
+    this.showDialogue('You', text, '', null);
   }
 
   receiveDMStory(data) {
@@ -597,11 +650,13 @@ export class StoryPlanet {
     const maxW = w - textX - 40;
     this.wrapText(ctx, this.typedText, textX, boxY + 42, maxW, 18);
 
-    if (this.choices.length > 0 && !this.typing) {
+    if (this.customInput && this.phase === 'dm-wait') {
+      this.renderCustomInput(ctx, w, boxY);
+    } else if (this.choices.length > 0 && !this.typing) {
       this.choiceRects = [];
       const cw = Math.min(200, w / 2 - 30), ch = 40;
       const startX = w / 2 - (this.choices.length * (cw + 10)) / 2;
-      const cy = boxY - ch - 12;
+      const cy = boxY - ch - 50;
       for (let i = 0; i < this.choices.length; i++) {
         const cx = startX + i * (cw + 10);
         this.choiceRects.push({ x: cx, y: cy, w: cw, h: ch });
@@ -617,6 +672,22 @@ export class StoryPlanet {
         ctx.fillStyle = '#fff';
         ctx.fillText(this.choices[i], cx + cw / 2, cy + ch / 2 + 5);
       }
+      // "Do something else" button
+      if (this.phase === 'dm-wait') {
+        const cbw = 180, cbh = 34;
+        const cbx = w / 2 - cbw / 2, cby = cy + ch + 8;
+        this.customBtnRect = { x: cbx, y: cby, w: cbw, h: cbh };
+        ctx.fillStyle = '#333344';
+        ctx.beginPath();
+        ctx.roundRect(cbx, cby, cbw, cbh, 8);
+        ctx.fill();
+        ctx.strokeStyle = '#666688';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.font = '13px -apple-system, system-ui, sans-serif';
+        ctx.fillStyle = '#aaaacc';
+        ctx.fillText('Do something else...', cbx + cbw / 2, cby + cbh / 2 + 4);
+      }
       ctx.textAlign = 'left';
     } else if (!this.typing && this.choiceCallback) {
       ctx.font = '12px -apple-system, system-ui, sans-serif';
@@ -625,6 +696,104 @@ export class StoryPlanet {
       ctx.fillText('Tap to continue ▶', w - 30, boxY + boxH - 10);
       ctx.textAlign = 'left';
     }
+  }
+
+  renderCustomInput(ctx, w, boxY) {
+    const h = this.screenH;
+    const kbRows = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
+    const panelH = boxY - 10;
+
+    ctx.fillStyle = 'rgba(5, 2, 20, 0.95)';
+    ctx.fillRect(8, 8, w - 16, panelH);
+    ctx.strokeStyle = '#6644aa';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(8, 8, w - 16, panelH);
+
+    ctx.font = '14px -apple-system, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#aa88ff';
+    ctx.fillText('What do you do?', w / 2, 30);
+
+    // Text field
+    ctx.fillStyle = '#111122';
+    ctx.beginPath();
+    ctx.roundRect(16, 38, w - 32, 32, 6);
+    ctx.fill();
+    ctx.strokeStyle = '#5566aa';
+    ctx.stroke();
+    ctx.font = '14px -apple-system, system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = this.customText ? '#fff' : '#555';
+    ctx.fillText(this.customText || 'Type your action...', 22, 60);
+
+    // Send button
+    const sbw = 120, sbh = 34;
+    const sbx = w / 2 - sbw / 2, sby = 78;
+    this.customSendRect = { x: sbx, y: sby, w: sbw, h: sbh };
+    ctx.fillStyle = this.customText ? '#22aa44' : '#333';
+    ctx.beginPath();
+    ctx.roundRect(sbx, sby, sbw, sbh, 6);
+    ctx.fill();
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 14px -apple-system, system-ui, sans-serif';
+    ctx.fillText('Send Action', sbx + sbw / 2, sby + sbh / 2 + 5);
+
+    // Keyboard
+    this.customKeyRects = [];
+    const gap = 3, kh = 32;
+    const pw = w - 32;
+    const startY = 120;
+    for (let r = 0; r < kbRows.length; r++) {
+      const row = kbRows[r];
+      const kw = Math.floor((pw - (row.length - 1) * gap) / row.length);
+      const indent = r === 1 ? 10 : r === 2 ? 26 : 0;
+      const ky = startY + r * (kh + gap);
+      for (let c = 0; c < row.length; c++) {
+        const kx = 16 + indent + c * (kw + gap);
+        this.customKeyRects.push({ x: kx, y: ky, w: kw, h: kh, key: row[c] });
+        ctx.fillStyle = '#1a1a33';
+        ctx.beginPath();
+        ctx.roundRect(kx, ky, kw, kh, 5);
+        ctx.fill();
+        ctx.font = 'bold 15px -apple-system, system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#ccc';
+        ctx.fillText(this.customShift ? row[c].toUpperCase() : row[c], kx + kw / 2, ky + kh / 2 + 5);
+      }
+      if (r === 2) {
+        const shW = 22, shX = 16;
+        this.customShiftRect = { x: shX, y: ky, w: shW, h: kh };
+        ctx.fillStyle = this.customShift ? '#4444aa' : '#1a1a33';
+        ctx.beginPath();
+        ctx.roundRect(shX, ky, shW, kh, 5);
+        ctx.fill();
+        ctx.fillStyle = '#aaa';
+        ctx.font = '12px -apple-system, system-ui, sans-serif';
+        ctx.fillText('⇧', shX + shW / 2, ky + kh / 2 + 4);
+      }
+    }
+    const spY = startY + 3 * (kh + gap);
+    const spW = pw * 0.45, spX = 16 + pw / 2 - spW / 2;
+    this.customSpaceRect = { x: spX, y: spY, w: spW, h: kh };
+    ctx.fillStyle = '#1a1a33';
+    ctx.beginPath();
+    ctx.roundRect(spX, spY, spW, kh, 5);
+    ctx.fill();
+    ctx.fillStyle = '#888';
+    ctx.font = '12px -apple-system, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('space', spX + spW / 2, spY + kh / 2 + 4);
+
+    const dw = pw * 0.15, dx = spX + spW + 8;
+    this.customDelRect = { x: dx, y: spY, w: dw, h: kh };
+    ctx.fillStyle = '#3a2820';
+    ctx.beginPath();
+    ctx.roundRect(dx, spY, dw, kh, 5);
+    ctx.fill();
+    ctx.fillStyle = '#ddaa77';
+    ctx.fillText('⌫', dx + dw / 2, spY + kh / 2 + 4);
+    ctx.textAlign = 'left';
   }
 
   renderRolePicker(ctx, w, h) {

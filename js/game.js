@@ -368,7 +368,7 @@ export class Game {
     multiplayer.onGameData = (peerId, data) => {
       if (this.state === STATE.STORY && this.story && this.story.dmTools) {
         if (data.type === 'char-sheet') this.story.dmTools.receiveSheet(peerId, data);
-        if (data.type === 'player-choice') this.story.dmTools.receiveChoice(peerId, data.idx);
+        if (data.type === 'player-choice') this.story.dmTools.receiveChoice(peerId, data.idx, data.custom);
       }
     };
     multiplayer.onHostState = (data) => {
