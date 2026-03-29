@@ -20,10 +20,11 @@ import { Chat } from './chat.js';
 import { IntroCutscene } from './intro-cutscene.js';
 import { BatmanPlanet } from './batman-planet.js';
 import { CoopBoss } from './coop-boss.js';
+import { StoryPlanet } from './story-planet.js';
 import { TaskList } from './task-list.js';
 import { RacingGame } from './racing-game.js';
 
-const STATE = { TITLE: 0, GALAXY: 1, SURFACE: 2, SPACE: 3, CUTSCENE: 4, DEATH: 5, FUEL: 6, QTE: 7, LOBBY: 8, BLACKHOLE: 9, ARCADE: 10, RACE: 11, BATMAN: 12, COOP: 13 };
+const STATE = { TITLE: 0, GALAXY: 1, SURFACE: 2, SPACE: 3, CUTSCENE: 4, DEATH: 5, FUEL: 6, QTE: 7, LOBBY: 8, BLACKHOLE: 9, ARCADE: 10, RACE: 11, BATMAN: 12, COOP: 13, STORY: 14 };
 
 export class Game {
   constructor(canvas) {
@@ -40,6 +41,7 @@ export class Game {
     this.race = null;
     this.batman = null;
     this.coop = null;
+    this.story = null;
     this.cameFromSpace = false;
     this.earnedSoldiers = 0;
     this.cutscene = null;
@@ -64,6 +66,7 @@ export class Game {
     this.input.onDrag = (x, y) => this.handleDrag(x, y);
     this.input.onDragEnd = () => this.handleDragEnd();
     this.input.onKey = (key) => {
+      if (this.state === STATE.STORY && this.story) { this.story.handleKey(key); return; }
       if (this.multiplayerActive && this.chat.handleKey(key)) return;
       if (this.state === STATE.LOBBY && this.lobby) this.lobby.handleKey(key);
     };
@@ -133,6 +136,11 @@ export class Game {
 
     if (this.state === STATE.RACE) {
       if (this.race) this.race.handleTap(x, y);
+      return;
+    }
+
+    if (this.state === STATE.STORY) {
+      if (this.story) this.story.handleTap(x, y);
       return;
     }
 
@@ -246,6 +254,13 @@ export class Game {
       this.arcade = new ArcadeMenu(this.width, this.height);
       this.cutscene = null;
       this.state = STATE.ARCADE;
+      return;
+    }
+    if (planetName === 'The Unknown') {
+      this.story = new StoryPlanet(this.width, this.height);
+      this.cutscene = null;
+      this.state = STATE.STORY;
+      music.setMode('galaxy');
       return;
     }
     if (planetName === 'Batplanet') {
@@ -613,6 +628,11 @@ export class Game {
           }
         }
       }
+    } else if (this.state === STATE.STORY) {
+      if (this.story) {
+        this.story.update(dt);
+        if (this.story.done) { this.story = null; this.respawnHome(); }
+      }
     } else if (this.state === STATE.BATMAN) {
       if (this.batman) {
         if (move.x !== 0 || move.y !== 0) {
@@ -706,6 +726,8 @@ export class Game {
       if (this.cutscene) this.cutscene.render(ctx);
     } else if (this.state === STATE.CUTSCENE || this.state === STATE.DEATH) {
       if (this.cutscene) this.cutscene.render(ctx);
+    } else if (this.state === STATE.STORY) {
+      if (this.story) this.story.render(ctx);
     } else if (this.state === STATE.COOP) {
       if (this.coop) {
         this.coop.render(ctx);
