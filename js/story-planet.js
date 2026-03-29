@@ -1,14 +1,20 @@
 import { CharacterSheet } from './story-char.js';
+import { DMTools } from './dm-tools.js';
+import { multiplayer } from './multiplayer.js';
 
 const FADE_SPEED = 1.5;
 
 export class StoryPlanet {
-  constructor(screenW, screenH) {
+  constructor(screenW, screenH, isMultiplayer) {
     this.screenW = screenW;
     this.screenH = screenH;
     this.done = false;
-    this.phase = 'char';
+    this.isMultiplayer = isMultiplayer || false;
+    this.role = '';
+    this.phase = this.isMultiplayer ? 'role' : 'char';
+    this.roleRects = [];
     this.charSheet = new CharacterSheet(screenW, screenH);
+    this.dmTools = null;
     this.playerName = '';
     this.playerClass = null;
 
@@ -42,6 +48,10 @@ export class StoryPlanet {
     this.spaceTimer = 0;
     this.spoken = new Set();
     this.voiceIndex = 0;
+    this.waitingForDM = false;
+    this.dmStoryText = '';
+    this.dmChoice1 = '';
+    this.dmChoice2 = '';
   }
 
   speak(text, pitch, rate, vol) {
@@ -113,6 +123,45 @@ export class StoryPlanet {
   }
 
   handleTap(x, y) {
+    if (this.phase === 'role') {
+      for (let i = 0; i < this.roleRects.length; i++) {
+        const r = this.roleRects[i];
+        if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) {
+          if (i === 0) {
+            this.role = 'dm';
+            this.dmTools = new DMTools(this.screenW, this.screenH);
+            this.phase = 'dm';
+          } else {
+            this.role = 'player';
+            this.phase = 'char';
+          }
+        }
+      }
+      return;
+    }
+
+    if (this.phase === 'dm') {
+      if (this.dmTools) this.dmTools.handleTap(x, y);
+      return;
+    }
+
+    if (this.phase === 'dm-wait') {
+      if (this.choices.length > 0) {
+        for (let i = 0; i < this.choiceRects.length; i++) {
+          const r = this.choiceRects[i];
+          if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) {
+            for (const conn of multiplayer.connections) {
+              if (conn.open) try { conn.send({ type: 'player-choice', idx: i }); } catch (_) {}
+            }
+            this.choices = [];
+            this.waitingForDM = true;
+            this.showDialogue('You', i === 0 ? this.dmChoice1 : this.dmChoice2, '', null);
+          }
+        }
+      }
+      return;
+    }
+
     if (this.phase === 'char') {
       this.charSheet.handleTap(x, y);
       return;
@@ -143,8 +192,40 @@ export class StoryPlanet {
   }
 
   handleKey(key) {
+    if (this.phase === 'dm' && this.dmTools) return this.dmTools.handleKey(key);
     if (this.phase === 'char') return this.charSheet.handleKey(key);
     return false;
+  }
+
+  receiveDMStory(data) {
+    if (this.role !== 'player') return;
+    this.dmStoryText = data.text;
+    this.dmChoice1 = data.choice1 || '';
+    this.dmChoice2 = data.choice2 || '';
+    this.phase = 'dm-wait';
+    this.waitingForDM = false;
+    this.showDialogue('DM', data.text, 'mysterious', null);
+    if (data.choice1 && data.choice2) {
+      this.choices = [data.choice1, data.choice2];
+    } else if (data.choice1) {
+      this.choices = [data.choice1];
+    } else {
+      this.choices = [];
+      this.waitingForDM = true;
+    }
+  }
+
+  sendCharSheet() {
+    if (!this.isMultiplayer) return;
+    const sheet = {
+      name: this.playerName,
+      className: this.playerClass.name,
+      color: this.playerClass.color,
+      hp: this.playerClass.hp,
+    };
+    for (const conn of multiplayer.connections) {
+      if (conn.open) try { conn.send({ type: 'char-sheet', ...sheet }); } catch (_) {}
+    }
   }
 
   startStory() {
@@ -224,11 +305,20 @@ export class StoryPlanet {
       }
     }
 
+    if (this.phase === 'dm' && this.dmTools) this.dmTools.update(dt);
+
     if (this.phase === 'char') {
       if (this.charSheet.done) {
         this.playerName = this.charSheet.name;
         this.playerClass = this.charSheet.selectedClass;
-        this.startStory();
+        if (this.role === 'player') {
+          this.sendCharSheet();
+          this.phase = 'dm-wait';
+          this.waitingForDM = true;
+          this.showDialogue('System', 'Waiting for the Dungeon Master...', '', null);
+        } else {
+          this.startStory();
+        }
       }
     }
 
@@ -282,8 +372,36 @@ export class StoryPlanet {
   render(ctx) {
     const w = this.screenW, h = this.screenH;
 
+    if (this.phase === 'role') {
+      this.renderRolePicker(ctx, w, h);
+      return;
+    }
+
+    if (this.phase === 'dm') {
+      if (this.dmTools) this.dmTools.render(ctx, w, h);
+      return;
+    }
+
     if (this.phase === 'char') {
       this.charSheet.render(ctx);
+      return;
+    }
+
+    if (this.phase === 'dm-wait' && this.waitingForDM) {
+      ctx.fillStyle = '#050510';
+      ctx.fillRect(0, 0, w, h);
+      for (const s of this.stars) {
+        ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${s.a})`; ctx.fill();
+      }
+      ctx.font = '18px -apple-system, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#aa88ff';
+      ctx.fillText('Waiting for the Dungeon Master...', w / 2, h * 0.4);
+      ctx.font = '14px -apple-system, system-ui, sans-serif';
+      ctx.fillStyle = '#666';
+      ctx.fillText(`${this.playerName} the ${this.playerClass ? this.playerClass.name : ''}`, w / 2, h * 0.48);
+      ctx.textAlign = 'left';
       return;
     }
 
@@ -507,6 +625,46 @@ export class StoryPlanet {
       ctx.fillText('Tap to continue ▶', w - 30, boxY + boxH - 10);
       ctx.textAlign = 'left';
     }
+  }
+
+  renderRolePicker(ctx, w, h) {
+    ctx.fillStyle = '#0a0a1a';
+    ctx.fillRect(0, 0, w, h);
+    ctx.font = 'bold 24px -apple-system, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#aa88ff';
+    ctx.fillText('THE UNKNOWN', w / 2, h * 0.12);
+    ctx.font = '16px -apple-system, system-ui, sans-serif';
+    ctx.fillStyle = '#8866aa';
+    ctx.fillText('Choose your role:', w / 2, h * 0.20);
+
+    this.roleRects = [];
+    const roles = [
+      { name: 'DUNGEON MASTER', desc: 'Write the story and choices for players', icon: '📜', color: '#ff88ff' },
+      { name: 'PLAYER', desc: 'Create a character and play the adventure', icon: '⚔️', color: '#44ddff' },
+    ];
+    const cardW = Math.min(280, w - 40), cardH = 90, gap = 16;
+    for (let i = 0; i < roles.length; i++) {
+      const r = roles[i];
+      const cx = w / 2 - cardW / 2, cy = h * 0.30 + i * (cardH + gap);
+      this.roleRects.push({ x: cx, y: cy, w: cardW, h: cardH });
+      ctx.fillStyle = 'rgba(20, 10, 40, 0.9)';
+      ctx.beginPath(); ctx.roundRect(cx, cy, cardW, cardH, 12); ctx.fill();
+      ctx.strokeStyle = r.color;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.font = '32px -apple-system, system-ui, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(r.icon, cx + 16, cy + 48);
+      ctx.font = 'bold 18px -apple-system, system-ui, sans-serif';
+      ctx.fillStyle = r.color;
+      ctx.fillText(r.name, cx + 60, cy + 38);
+      ctx.font = '12px -apple-system, system-ui, sans-serif';
+      ctx.fillStyle = '#888';
+      ctx.fillText(r.desc, cx + 60, cy + 58);
+      ctx.textAlign = 'center';
+    }
+    ctx.textAlign = 'left';
   }
 
   wrapText(ctx, text, x, y, maxW, lineH) {

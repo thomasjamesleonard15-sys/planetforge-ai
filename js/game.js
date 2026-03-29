@@ -257,7 +257,7 @@ export class Game {
       return;
     }
     if (planetName === 'The Unknown') {
-      this.story = new StoryPlanet(this.width, this.height);
+      this.story = new StoryPlanet(this.width, this.height, this.multiplayerActive);
       this.cutscene = null;
       this.state = STATE.STORY;
       music.setMode('galaxy');
@@ -362,6 +362,12 @@ export class Game {
     multiplayer.onChat = (data) => {
       if (data.text) this.chat.addMessage(data.name || 'Player', data.text);
     };
+    multiplayer.onGameData = (peerId, data) => {
+      if (this.state === STATE.STORY && this.story && this.story.dmTools) {
+        if (data.type === 'char-sheet') this.story.dmTools.receiveSheet(peerId, data);
+        if (data.type === 'player-choice') this.story.dmTools.receiveChoice(peerId, data.idx);
+      }
+    };
     multiplayer.onHostState = (data) => {
       if (data.action === 'start' && this.state === STATE.LOBBY && this.lobby) {
         this.lobby.done = true;
@@ -372,6 +378,8 @@ export class Game {
         this.worldSync.applySpace(data, this.space);
       } else if (data.action === 'coop-boss' && this.state === STATE.COOP && this.coop) {
         this.coop.applyHostState(data);
+      } else if (data.action === 'dm-story' && this.state === STATE.STORY && this.story) {
+        this.story.receiveDMStory(data);
       }
     };
   }
