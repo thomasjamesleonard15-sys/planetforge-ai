@@ -41,14 +41,39 @@ export class StoryPlanet {
     this.floatingInSpace = false;
     this.spaceTimer = 0;
     this.spoken = new Set();
+    this.voiceIndex = 0;
   }
 
-  speak(text, pitch, rate) {
+  speak(text, pitch, rate, vol) {
     try {
       const u = new SpeechSynthesisUtterance(text);
-      u.pitch = pitch || 0.5; u.rate = rate || 0.7; u.volume = 1;
+      u.pitch = pitch; u.rate = rate; u.volume = vol || 1;
       speechSynthesis.speak(u);
     } catch (_) {}
+  }
+
+  npcVoice(text) {
+    const moods = [
+      { pitch: 0.2, rate: 0.5 },
+      { pitch: 0.4, rate: 0.65 },
+      { pitch: 0.1, rate: 0.4 },
+      { pitch: 0.6, rate: 0.8 },
+      { pitch: 0.15, rate: 0.55 },
+      { pitch: 0.5, rate: 0.9 },
+      { pitch: 0.05, rate: 0.35 },
+      { pitch: 0.35, rate: 0.7 },
+    ];
+    if (/shh/i.test(text)) return { pitch: 0.05, rate: 0.3 };
+    if (/\?$/.test(text)) return { pitch: 0.5, rate: 0.75 };
+    if (/!$/.test(text)) return { pitch: 0.6, rate: 0.9 };
+    if (/long time/i.test(text)) return { pitch: 0.1, rate: 0.35 };
+    if (/bold/i.test(text)) return { pitch: 0.4, rate: 0.6 };
+    if (/smart/i.test(text)) return { pitch: 0.45, rate: 0.7 };
+    if (/game over/i.test(text)) return { pitch: 0.15, rate: 0.45 };
+    if (/welcome/i.test(text)) return { pitch: 0.55, rate: 0.8 };
+    const m = moods[this.voiceIndex % moods.length];
+    this.voiceIndex++;
+    return m;
   }
 
   showDialogue(speaker, text, portrait, callback) {
@@ -62,7 +87,12 @@ export class StoryPlanet {
     this.choiceCallback = callback || null;
     if (!this.spoken.has(text)) {
       this.spoken.add(text);
-      this.speak(text, speaker === '???' ? 0.3 : 0.8, 0.7);
+      if (speaker === '???') {
+        const v = this.npcVoice(text);
+        this.speak(text, v.pitch, v.rate);
+      } else {
+        this.speak(text, 0.8, 0.8);
+      }
     }
   }
 
