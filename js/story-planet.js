@@ -251,10 +251,11 @@ export class StoryPlanet {
   }
 
   receiveDMStory(data) {
-    if (this.role !== 'player') return;
+    if (this.role === 'dm') return;
     this.dmStoryText = data.text;
     this.dmChoice1 = data.choice1 || '';
     this.dmChoice2 = data.choice2 || '';
+    this.customInput = false;
     this.phase = 'dm-wait';
     this.waitingForDM = false;
     this.showDialogue('DM', data.text, 'mysterious', null);
@@ -264,7 +265,6 @@ export class StoryPlanet {
       this.choices = [data.choice1];
     } else {
       this.choices = [];
-      this.waitingForDM = true;
     }
   }
 
@@ -474,7 +474,7 @@ export class StoryPlanet {
     if (this.floatingInSpace) this.renderFloating(ctx, w, h);
 
     for (const a of this.aliens) {
-      if (this.phase !== 'ship' && this.phase !== 'flying' && this.phase !== 'flying-wait' && this.phase !== 'floating' && this.phase !== 'floating-wait') continue;
+      if (this.phase !== 'ship' && this.phase !== 'flying' && this.phase !== 'flying-wait' && this.phase !== 'floating' && this.phase !== 'floating-wait' && this.phase !== 'dm-wait') continue;
       ctx.beginPath();
       ctx.arc(a.x, a.y, a.r, 0, Math.PI * 2);
       ctx.fillStyle = a.color;

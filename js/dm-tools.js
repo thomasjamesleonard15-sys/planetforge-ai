@@ -29,12 +29,15 @@ export class DMTools {
   sendStory() {
     if (!this.storyText) return;
     const data = {
+      type: 'host-state',
       action: 'dm-story',
       text: this.storyText,
       choice1: this.choice1 || null,
       choice2: this.choice2 || null,
     };
-    multiplayer.broadcastHostState(data);
+    for (const conn of multiplayer.connections) {
+      if (conn.open) try { conn.send(data); } catch (_) {}
+    }
     this.sent = true;
     this.sentTimer = 2;
     this.playerChoices.clear();
