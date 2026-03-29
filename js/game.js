@@ -140,6 +140,9 @@ export class Game {
     }
 
     if (this.state === STATE.STORY) {
+      if (x >= 12 && x <= 92 && y >= 60 && y <= 96) {
+        this.story = null; this.respawnHome(); return;
+      }
       if (this.story) this.story.handleTap(x, y);
       return;
     }
@@ -736,6 +739,7 @@ export class Game {
       if (this.cutscene) this.cutscene.render(ctx);
     } else if (this.state === STATE.STORY) {
       if (this.story) this.story.render(ctx);
+      this.renderBackButton(ctx);
     } else if (this.state === STATE.COOP) {
       if (this.coop) {
         this.coop.render(ctx);
