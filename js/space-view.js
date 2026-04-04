@@ -36,6 +36,14 @@ export class SpaceView {
     this.blackHole = null;
     this.blackHoleCheck = 0;
     this.blackHoleEvent = false;
+    this.eva = false;
+    this.evaX = 0; this.evaY = 0;
+    this.evaVX = 0; this.evaVY = 0;
+    this.evaRadius = 10;
+    this.parkedShipX = 0; this.parkedShipY = 0;
+    this.miningTarget = -1; this.miningTimer = 0;
+    this.evaBtnRect = { x: 0, y: 0, w: 0, h: 0 };
+    this.boardShipRect = { x: 0, y: 0, w: 0, h: 0 };
   }
 
   initPlanets(galaxyPlanets) {
@@ -125,10 +133,29 @@ export class SpaceView {
       const bbx = this.screenW / 2 - 80;
       if (sx >= bbx && sx <= bbx + 160 && sy >= bby && sy <= bby + 44) { this.boardAlien(); return; }
     }
+    // EVA button
+    const eb = this.evaBtnRect;
+    if (eb.w > 0 && sx >= eb.x && sx <= eb.x + eb.w && sy >= eb.y && sy <= eb.y + eb.h) {
+      if (!this.eva) {
+        this.eva = true;
+        this.parkedShipX = this.shipX; this.parkedShipY = this.shipY;
+        this.evaX = this.shipX; this.evaY = this.shipY;
+        this.evaVX = this.shipVX * 0.3; this.evaVY = this.shipVY * 0.3;
+      }
+      return;
+    }
+    // Board ship button
+    const bs = this.boardShipRect;
+    if (bs.w > 0 && sx >= bs.x && sx <= bs.x + bs.w && sy >= bs.y && sy <= bs.y + bs.h) {
+      this.eva = false;
+      this.shipX = this.parkedShipX; this.shipY = this.parkedShipY;
+      this.shipVX = 0; this.shipVY = 0;
+      return;
+    }
     if (sx < this.screenW * 0.4) {
       this.joystickActive = true; this.joystickOX = sx; this.joystickOY = sy;
       this.joyX = 0; this.joyY = 0;
-    } else { this.shoot(sx, sy); }
+    } else if (!this.eva) { this.shoot(sx, sy); }
   }
 
   handleTouchMove(sx, sy) {
@@ -185,16 +212,21 @@ export class SpaceView {
     let mx = this.joyX + keyMoveX, my = this.joyY + keyMoveY;
     const len = Math.sqrt(mx * mx + my * my);
     if (len > 1) { mx /= len; my /= len; }
-    const speed = SHIP_SPEED * this.upgrades.getSpeedMultiplier();
-    if (this.fuel <= 0) {
-      this.shipThrust = false;
-      this.outOfFuel = true;
-    } else if (len > 0.1) {
-      this.shipVX += mx * speed * dt; this.shipVY += my * speed * dt;
-      this.shipAngle = Math.atan2(my, mx); this.shipThrust = true;
-      this.fuel -= dt * 0.8;
-      if (this.fuel < 0) this.fuel = 0;
-    } else { this.shipThrust = false; }
+
+    if (this.eva) {
+      this.updateEVA(dt, mx, my, len);
+    } else {
+      const speed = SHIP_SPEED * this.upgrades.getSpeedMultiplier();
+      if (this.fuel <= 0) {
+        this.shipThrust = false;
+        this.outOfFuel = true;
+      } else if (len > 0.1) {
+        this.shipVX += mx * speed * dt; this.shipVY += my * speed * dt;
+        this.shipAngle = Math.atan2(my, mx); this.shipThrust = true;
+        this.fuel -= dt * 0.8;
+        if (this.fuel < 0) this.fuel = 0;
+      } else { this.shipThrust = false; }
+    }
 
     this.shipVX *= SHIP_DRAG; this.shipVY *= SHIP_DRAG;
     this.shipX += this.shipVX * dt; this.shipY += this.shipVY * dt;
@@ -318,6 +350,49 @@ export class SpaceView {
     }
 
     this.checkCollisions();
+  }
+
+  updateEVA(dt, mx, my, len) {
+    const EVA_SPEED = 150;
+    if (len > 0.1) {
+      this.evaVX += mx * EVA_SPEED * dt;
+      this.evaVY += my * EVA_SPEED * dt;
+    }
+    this.evaVX *= 0.96; this.evaVY *= 0.96;
+    this.evaX += this.evaVX * dt;
+    this.evaY += this.evaVY * dt;
+    if (this.evaX < -10) this.evaX = this.screenW + 10;
+    if (this.evaX > this.screenW + 10) this.evaX = -10;
+    if (this.evaY < -10) this.evaY = this.screenH + 10;
+    if (this.evaY > this.screenH + 10) this.evaY = -10;
+
+    // Mining — find nearest asteroid
+    this.miningTarget = -1;
+    for (let i = 0; i < this.asteroids.length; i++) {
+      const a = this.asteroids[i];
+      if (!a.active) continue;
+      const dx = this.evaX - a.x, dy = this.evaY - a.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < a.r + 30) {
+        this.miningTarget = i;
+        this.miningTimer += dt;
+        if (this.miningTimer >= 1.5) {
+          this.miningTimer = 0;
+          const reward = Math.ceil(a.r);
+          this.metal += reward;
+          this.score += Math.ceil(reward / 2);
+          a.hp -= 3;
+          emitParticles(this.particles, a.x + (Math.random() - 0.5) * a.r, a.y + (Math.random() - 0.5) * a.r, 6, 0, 0.4, '#ffaa44', 80, 3);
+          if (a.hp <= 0) {
+            a.active = false;
+            this.metal += Math.ceil(a.r * 2);
+            emitParticles(this.particles, a.x, a.y, 15, 0, 0.6, '#aaa', 150, 4);
+          }
+        }
+        break;
+      }
+    }
+    if (this.miningTarget < 0) this.miningTimer = 0;
   }
 
   checkCollisions() {

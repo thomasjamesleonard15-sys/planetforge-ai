@@ -274,6 +274,81 @@ export function renderShip(ctx, view) {
   }
 
   ctx.restore();
+
+  // EVA character
+  if (view.eva) {
+    // Parked ship indicator
+    ctx.globalAlpha = 0.4;
+    ctx.beginPath();
+    ctx.arc(view.parkedShipX, view.parkedShipY, 24, 0, Math.PI * 2);
+    ctx.strokeStyle = '#4488ff';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
+
+    // EVA astronaut
+    const ex = view.evaX, ey = view.evaY;
+    ctx.beginPath();
+    ctx.arc(ex, ey, view.evaRadius, 0, Math.PI * 2);
+    const eg = ctx.createRadialGradient(ex - 2, ey - 2, 2, ex, ey, view.evaRadius);
+    eg.addColorStop(0, '#66ccff');
+    eg.addColorStop(1, '#2255aa');
+    ctx.fillStyle = eg;
+    ctx.fill();
+    ctx.strokeStyle = '#88ddff';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    // Visor
+    ctx.beginPath();
+    ctx.arc(ex, ey - 3, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#aaeeff';
+    ctx.fill();
+    // Jetpack glow
+    if (Math.abs(view.evaVX) > 5 || Math.abs(view.evaVY) > 5) {
+      ctx.globalAlpha = 0.5;
+      ctx.beginPath();
+      ctx.arc(ex, ey + 8, 5, 0, Math.PI * 2);
+      ctx.fillStyle = '#ff8833';
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
+    // Mining indicator
+    if (view.miningTarget >= 0) {
+      const a = view.asteroids[view.miningTarget];
+      if (a && a.active) {
+        ctx.beginPath();
+        ctx.arc(a.x, a.y, a.r + 6, 0, Math.PI * 2);
+        ctx.strokeStyle = '#ffaa44';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        // Mining progress bar
+        const pct = view.miningTimer / 1.5;
+        const bw = 40;
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(a.x - bw / 2, a.y - a.r - 14, bw, 6);
+        ctx.fillStyle = '#ffaa44';
+        ctx.fillRect(a.x - bw / 2, a.y - a.r - 14, bw * pct, 6);
+        ctx.font = '10px -apple-system, system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#ffdd88';
+        ctx.fillText('Mining...', a.x, a.y - a.r - 18);
+        ctx.textAlign = 'left';
+      }
+    }
+
+    // Tether line to ship
+    ctx.strokeStyle = 'rgba(100,150,255,0.2)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(ex, ey);
+    ctx.lineTo(view.parkedShipX, view.parkedShipY);
+    ctx.stroke();
+  }
 }
 
 export function renderSpaceHUD(ctx, view) {
@@ -414,6 +489,54 @@ export function renderSpaceHUD(ctx, view) {
     ctx.textAlign = 'center';
     ctx.fillStyle = view.hijacked.color;
     ctx.fillText(`🏴‍☠️ HIJACKED — ${view.hijackTimer.toFixed(1)}s`, w / 2, 48);
+    ctx.textAlign = 'left';
+  }
+
+  // EVA button
+  if (!view.eva && !view.gameOver) {
+    const ebw = 100, ebh = 36;
+    const ebx = 12, eby = h - ebh - 16;
+    view.evaBtnRect = { x: ebx, y: eby, w: ebw, h: ebh };
+    ctx.fillStyle = 'rgba(30, 60, 80, 0.9)';
+    ctx.beginPath(); ctx.roundRect(ebx, eby, ebw, ebh, 8); ctx.fill();
+    ctx.strokeStyle = '#44aaff';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.font = '13px -apple-system, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#88ccff';
+    ctx.fillText('🧑‍🚀 EVA', ebx + ebw / 2, eby + ebh / 2 + 5);
+    ctx.textAlign = 'left';
+  } else {
+    view.evaBtnRect = { x: 0, y: 0, w: 0, h: 0 };
+  }
+
+  // Board ship button
+  if (view.eva) {
+    const dx = view.evaX - view.parkedShipX, dy = view.evaY - view.parkedShipY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < 60) {
+      const bsw = 140, bsh = 40;
+      const bsx = w / 2 - bsw / 2, bsy = h - bsh - 70;
+      view.boardShipRect = { x: bsx, y: bsy, w: bsw, h: bsh };
+      ctx.fillStyle = 'rgba(30, 80, 50, 0.9)';
+      ctx.beginPath(); ctx.roundRect(bsx, bsy, bsw, bsh, 8); ctx.fill();
+      ctx.strokeStyle = '#44ff88';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.font = 'bold 14px -apple-system, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ccffcc';
+      ctx.fillText('⏎ Board Ship', bsx + bsw / 2, bsy + bsh / 2 + 5);
+      ctx.textAlign = 'left';
+    } else {
+      view.boardShipRect = { x: 0, y: 0, w: 0, h: 0 };
+    }
+
+    ctx.font = '12px -apple-system, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#88ccff';
+    ctx.fillText('EVA MODE — Mine asteroids!', w / 2, h - 16);
     ctx.textAlign = 'left';
   }
 
