@@ -36,6 +36,7 @@ export class SpaceView {
     this.blackHole = null;
     this.blackHoleCheck = 0;
     this.blackHoleEvent = false;
+    this.totalSpaceTime = 0;
     this.eva = false;
     this.evaX = 0; this.evaY = 0;
     this.evaVX = 0; this.evaVY = 0;
@@ -305,8 +306,9 @@ export class SpaceView {
     const pdx = this.shipX - this.portal.x, pdy = this.shipY - this.portal.y;
     this.nearPortal = Math.sqrt(pdx * pdx + pdy * pdy) < this.portal.radius * 2;
 
-    // Black hole 1% event
-    if (!this.blackHole && !this.blackHoleEvent) {
+    // Black hole 1% event — only after 20 minutes
+    this.totalSpaceTime += dt;
+    if (!this.blackHole && !this.blackHoleEvent && this.totalSpaceTime >= 1200) {
       this.blackHoleCheck += dt;
       if (this.blackHoleCheck >= 1) {
         this.blackHoleCheck = 0;
