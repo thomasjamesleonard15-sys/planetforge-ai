@@ -472,8 +472,10 @@ export class SpaceView {
   }
 
   render(ctx) {
-    renderSpaceWorld(ctx, this);
-    renderShip(ctx, this);
+    if (!this.use3D) {
+      renderSpaceWorld(ctx, this);
+      renderShip(ctx, this);
+    }
     renderSpaceHUD(ctx, this);
   }
 }
