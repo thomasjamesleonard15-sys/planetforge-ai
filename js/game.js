@@ -21,7 +21,6 @@ import { IntroCutscene } from './intro-cutscene.js';
 import { BatmanPlanet } from './batman-planet.js';
 import { CoopBoss } from './coop-boss.js';
 import { StoryPlanet } from './story-planet.js';
-import { Space3D } from './space-3d.js';
 import { TaskList } from './task-list.js';
 import { RacingGame } from './racing-game.js';
 
@@ -43,7 +42,6 @@ export class Game {
     this.batman = null;
     this.coop = null;
     this.story = null;
-    this.space3D = null;
     this.cameFromSpace = false;
     this.earnedSoldiers = 0;
     this.cutscene = null;
@@ -75,10 +73,6 @@ export class Game {
   }
 
   start() {
-    const threeCanvas = document.getElementById('three-canvas');
-    if (threeCanvas && !this.space3D) {
-      try { this.space3D = new Space3D(threeCanvas); this.space3D.resize(this.width, this.height); } catch (e) { console.error('3D init failed', e); }
-    }
     this.intro = new IntroCutscene(this.width, this.height);
     this.state = STATE.TITLE;
     this.running = true;
@@ -87,10 +81,6 @@ export class Game {
   }
 
   startWithJoin(roomCode) {
-    const threeCanvas = document.getElementById('three-canvas');
-    if (threeCanvas && !this.space3D) {
-      try { this.space3D = new Space3D(threeCanvas); this.space3D.resize(this.width, this.height); } catch (_) {}
-    }
     this.running = true;
     this.lastTime = performance.now();
     music.start();
@@ -107,7 +97,6 @@ export class Game {
     this.height = h;
     if (this.surface) this.surface.resize(w, h);
     if (this.space) this.space.resize(w, h);
-    if (this.space3D) this.space3D.resize(w, h);
   }
 
   handleTap(x, y) {
@@ -416,11 +405,6 @@ export class Game {
     this.tasks.complete('fly');
     if (this.multiplayerActive && !multiplayer.isHost) {
       this.space.aliens.syncedByHost = true;
-    }
-    if (this.space3D) {
-      this.space.use3D = true;
-      this.space3D.setupPlanets(this.space.planets);
-      this.space3D.show();
     }
   }
 
@@ -734,17 +718,6 @@ export class Game {
   render() {
     const ctx = this.ctx;
     ctx.clearRect(0, 0, this.width, this.height);
-
-    // 3D space view
-    if (this.space3D) {
-      if (this.state === STATE.SPACE && this.space) {
-        this.space3D.show();
-        this.space3D.syncFromView(this.space);
-        this.space3D.render();
-      } else {
-        this.space3D.hide();
-      }
-    }
 
     if (this.state === STATE.TITLE) {
       if (this.intro) this.intro.render(ctx);
