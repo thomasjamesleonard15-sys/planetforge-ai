@@ -12,6 +12,7 @@ import { SoldierSystem } from './soldiers.js';
 import { DayNightCycle } from './day-night.js';
 import { EncounterCutscene } from './encounter-cutscene.js';
 import { VictoryCutscene } from './victory-cutscene.js';
+import { renderFPS } from './fps-renderer.js';
 
 export class SurfaceView {
   constructor(isHome = true) {
@@ -47,6 +48,9 @@ export class SurfaceView {
     this.screenShake = 0;
     this.dustTimer = 0;
     this.lastPlayerHealth = 100;
+    this.fpsMode = false;
+    this.fpsBtnRect = { x: 0, y: 0, w: 0, h: 0 };
+    this.player.fpsAngle = 0;
   }
 
   resize(w, h) {
@@ -89,6 +93,12 @@ export class SurfaceView {
         this.dayNight.sleep();
         return;
       }
+    }
+    // FPS toggle button
+    const fb = this.fpsBtnRect;
+    if (fb.w > 0 && sx >= fb.x && sx <= fb.x + fb.w && sy >= fb.y && sy <= fb.y + fb.h) {
+      this.fpsMode = !this.fpsMode;
+      return;
     }
     // Build toggle button
     const btnSize = 56;
@@ -298,7 +308,25 @@ export class SurfaceView {
   update(dt) {
     if (this.gameOver) return;
 
-    this.player.update(dt, this.hud.joystickX, this.hud.joystickY);
+    if (this.fpsMode) {
+      // FPS mode — joystick Y = forward/back, joystick X = strafe; rotate with right tap drag
+      const fwd = -this.hud.joystickY;
+      const strafe = this.hud.joystickX;
+      const cos = Math.cos(this.player.fpsAngle), sin = Math.sin(this.player.fpsAngle);
+      const moveX = cos * fwd - sin * strafe;
+      const moveY = sin * fwd + cos * strafe;
+      this.player.update(dt, moveX, moveY);
+      // Auto-rotate to movement direction if no turn input
+      if (Math.abs(fwd) > 0.1 || Math.abs(strafe) > 0.1) {
+        const targetAngle = Math.atan2(moveY, moveX);
+        let da = targetAngle - this.player.fpsAngle;
+        while (da > Math.PI) da -= Math.PI * 2;
+        while (da < -Math.PI) da += Math.PI * 2;
+        this.player.fpsAngle += da * 4 * dt;
+      }
+    } else {
+      this.player.update(dt, this.hud.joystickX, this.hud.joystickY);
+    }
     this.camera.follow(this.player.x, this.player.y);
     this.camera.update(dt);
     this.tileMap.update(dt, this.resources);
@@ -453,14 +481,35 @@ export class SurfaceView {
     ctx.save();
     ctx.translate(shakeX, shakeY);
 
-    this.tileMap.render(ctx, this.camera);
-    this.player.render(ctx, this.camera);
-    this.soldiers.render(ctx, this.camera);
-    if (this.enemies) this.enemies.render(ctx, this.camera);
-    this.projectiles.render(ctx, this.camera);
-    this.particles.render(ctx, this.camera);
-    this.dayNight.render(ctx, this.camera, this.screenW, this.screenH);
+    if (this.fpsMode) {
+      renderFPS(ctx, this);
+    } else {
+      this.tileMap.render(ctx, this.camera);
+      this.player.render(ctx, this.camera);
+      this.soldiers.render(ctx, this.camera);
+      if (this.enemies) this.enemies.render(ctx, this.camera);
+      this.projectiles.render(ctx, this.camera);
+      this.particles.render(ctx, this.camera);
+      this.dayNight.render(ctx, this.camera, this.screenW, this.screenH);
+    }
     ctx.restore();
+
+    // FPS toggle button
+    const fbW = 80, fbH = 36;
+    const fbX = this.screenW - fbW - 16, fbY = 60;
+    this.fpsBtnRect = { x: fbX, y: fbY, w: fbW, h: fbH };
+    ctx.fillStyle = this.fpsMode ? 'rgba(60, 100, 60, 0.9)' : 'rgba(20, 20, 40, 0.85)';
+    ctx.beginPath();
+    ctx.roundRect(fbX, fbY, fbW, fbH, 8);
+    ctx.fill();
+    ctx.strokeStyle = this.fpsMode ? '#88ff88' : 'rgba(100, 120, 255, 0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.font = '13px -apple-system, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = this.fpsMode ? '#ccffcc' : '#aab';
+    ctx.fillText(this.fpsMode ? '👁 FPS' : '👁 FPS', fbX + fbW / 2, fbY + fbH / 2 + 5);
+    ctx.textAlign = 'left';
 
     // Vignette overlay
     const vg = ctx.createRadialGradient(this.screenW / 2, this.screenH / 2, this.screenH * 0.3, this.screenW / 2, this.screenH / 2, this.screenH * 0.85);
