@@ -27,6 +27,9 @@ export class GalaxyView {
     this.warpLeftRect = { x: 0, y: 0, w: 0, h: 0 };
     this.warpRightRect = { x: 0, y: 0, w: 0, h: 0 };
     this.multiplayerRect = { x: 0, y: 0, w: 0, h: 0 };
+    this.showTypePicker = false;
+    this.typePickerRects = [];
+    this.typePickerClose = { x: 0, y: 0, w: 0, h: 0 };
     this.time = 0;
     this.warpAnim = 0;
 
@@ -104,6 +107,28 @@ export class GalaxyView {
   }
 
   handleTap(sx, sy, screenW, screenH) {
+    // Type picker modal — handle first if open
+    if (this.showTypePicker) {
+      const cl = this.typePickerClose;
+      if (sx >= cl.x && sx <= cl.x + cl.w && sy >= cl.y && sy <= cl.y + cl.h) {
+        this.showTypePicker = false;
+        return 'none';
+      }
+      for (let i = 0; i < this.typePickerRects.length; i++) {
+        const r = this.typePickerRects[i];
+        if (sx >= r.x && sx <= r.x + r.w && sy >= r.y && sy <= r.y + r.h) {
+          const names = ['Nova', 'Aether', 'Crimson', 'Jade', 'Ember', 'Frost', 'Void', 'Neon', 'Kairos'];
+          const name = names[this.planets.length % names.length] + ' ' + (this.planets.length + 1);
+          this.addPlanet(name);
+          // Set the type to the chosen one
+          this.planets[this.planets.length - 1].type = PLANET_TYPES[i];
+          this.showTypePicker = false;
+          return 'created';
+        }
+      }
+      return 'none';
+    }
+
     // Warp left
     const wl = this.warpLeftRect;
     if (this.currentGalaxy > 0 && sx >= wl.x && sx <= wl.x + wl.w && sy >= wl.y && sy <= wl.y + wl.h) {
@@ -127,12 +152,11 @@ export class GalaxyView {
       return 'warp';
     }
 
-    // Create planet button
+    // Create planet button — open type picker
     const cb = this.createButtonRect;
     if (sx >= cb.x && sx <= cb.x + cb.w && sy >= cb.y && sy <= cb.y + cb.h) {
-      const names = ['Nova', 'Aether', 'Crimson', 'Jade', 'Ember', 'Frost', 'Void', 'Neon'];
-      this.addPlanet(names[this.planets.length % names.length] + ' ' + (this.planets.length + 1));
-      return 'created';
+      this.showTypePicker = true;
+      return 'none';
     }
 
     // Enter planet
@@ -319,6 +343,87 @@ export class GalaxyView {
     ctx.font = '14px -apple-system, system-ui, sans-serif';
     ctx.fillStyle = '#667';
     ctx.fillText(`Galaxy ${this.currentGalaxy + 1} of ${this.galaxies.length}`, w / 2, 65);
+    ctx.textAlign = 'left';
+
+    if (this.showTypePicker) this.renderTypePicker(ctx, w, h);
+  }
+
+  renderTypePicker(ctx, w, h) {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+    ctx.fillRect(0, 0, w, h);
+
+    const pw = Math.min(480, w - 32), ph = Math.min(540, h - 60);
+    const px = w / 2 - pw / 2, py = h / 2 - ph / 2;
+
+    ctx.fillStyle = 'rgba(10, 10, 30, 0.97)';
+    ctx.beginPath();
+    ctx.roundRect(px, py, pw, ph, 14);
+    ctx.fill();
+    ctx.strokeStyle = '#4466aa';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    ctx.font = 'bold 22px -apple-system, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#88aaff';
+    ctx.fillText('🌍 Choose Planet Type', w / 2, py + 36);
+
+    const types = [
+      { key: 'earth', name: 'Earth', desc: 'Oceans & continents', icon: '🌍' },
+      { key: 'lava', name: 'Lava', desc: 'Molten & fiery', icon: '🌋' },
+      { key: 'ice', name: 'Ice', desc: 'Frozen wasteland', icon: '🧊' },
+      { key: 'gas', name: 'Gas Giant', desc: 'Bands & rings', icon: '🪐' },
+      { key: 'desert', name: 'Desert', desc: 'Sandy dunes', icon: '🏜️' },
+      { key: 'forest', name: 'Forest', desc: 'Lush & green', icon: '🌲' },
+      { key: 'ocean', name: 'Ocean', desc: 'Water world', icon: '🌊' },
+      { key: 'rock', name: 'Rock', desc: 'Craters & ridges', icon: '🪨' },
+      { key: 'toxic', name: 'Toxic', desc: 'Dangerous swirls', icon: '☣️' },
+    ];
+
+    this.typePickerRects = [];
+    const cols = 3;
+    const cardW = (pw - 40) / cols - 8;
+    const cardH = 100;
+    const startX = px + 20;
+    const startY = py + 60;
+    for (let i = 0; i < types.length; i++) {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const cx = startX + col * (cardW + 8);
+      const cy = startY + row * (cardH + 8);
+      this.typePickerRects.push({ x: cx, y: cy, w: cardW, h: cardH });
+
+      ctx.fillStyle = 'rgba(30, 30, 60, 0.9)';
+      ctx.beginPath();
+      ctx.roundRect(cx, cy, cardW, cardH, 10);
+      ctx.fill();
+      ctx.strokeStyle = '#4466aa';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      ctx.font = '32px -apple-system, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(types[i].icon, cx + cardW / 2, cy + 38);
+      ctx.font = 'bold 13px -apple-system, system-ui, sans-serif';
+      ctx.fillStyle = '#cce';
+      ctx.fillText(types[i].name, cx + cardW / 2, cy + 62);
+      ctx.font = '10px -apple-system, system-ui, sans-serif';
+      ctx.fillStyle = '#888';
+      ctx.fillText(types[i].desc, cx + cardW / 2, cy + 80);
+    }
+
+    // Close button
+    const cbw = 32, cbh = 32;
+    const cbx = px + pw - cbw - 12, cby = py + 10;
+    this.typePickerClose = { x: cbx, y: cby, w: cbw, h: cbh };
+    ctx.fillStyle = '#442222';
+    ctx.beginPath();
+    ctx.roundRect(cbx, cby, cbw, cbh, 6);
+    ctx.fill();
+    ctx.font = '18px -apple-system, system-ui, sans-serif';
+    ctx.fillStyle = '#ff6666';
+    ctx.fillText('✕', cbx + cbw / 2, cby + cbh / 2 + 6);
+
     ctx.textAlign = 'left';
   }
 }
