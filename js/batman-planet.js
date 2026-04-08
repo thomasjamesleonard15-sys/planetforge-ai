@@ -348,6 +348,69 @@ export class BatmanPlanet {
     ctx.fillStyle = fog;
     ctx.fillRect(0, h * 0.55, w, h * 0.3);
 
+    // Rooftop floor — wet asphalt
+    const floorY = h * 0.7;
+    const floorG = ctx.createLinearGradient(0, floorY, 0, h);
+    floorG.addColorStop(0, '#10101a');
+    floorG.addColorStop(0.3, '#181825');
+    floorG.addColorStop(1, '#08080f');
+    ctx.fillStyle = floorG;
+    ctx.fillRect(0, floorY, w, h - floorY);
+
+    // Floor tile grid lines for perspective
+    ctx.strokeStyle = 'rgba(60, 60, 90, 0.3)';
+    ctx.lineWidth = 1;
+    const cx = w / 2;
+    // Horizontal lines receding
+    for (let i = 1; i < 20; i++) {
+      const y = floorY + (i * i) * 3;
+      if (y > h) break;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+      ctx.stroke();
+    }
+    // Vanishing-point perspective lines
+    for (let i = -10; i <= 10; i++) {
+      const endX = cx + i * w * 0.15;
+      ctx.beginPath();
+      ctx.moveTo(cx, floorY);
+      ctx.lineTo(endX, h);
+      ctx.stroke();
+    }
+
+    // Wet puddle reflections of the moon
+    const puddleX = w * 0.2, puddleY = h * 0.85;
+    const puddleG = ctx.createRadialGradient(puddleX, puddleY, 5, puddleX, puddleY, 40);
+    puddleG.addColorStop(0, 'rgba(230, 220, 180, 0.25)');
+    puddleG.addColorStop(1, 'rgba(230, 220, 180, 0)');
+    ctx.fillStyle = puddleG;
+    ctx.beginPath();
+    ctx.ellipse(puddleX, puddleY, 40, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const puddle2X = w * 0.6, puddle2Y = h * 0.92;
+    const puddle2G = ctx.createRadialGradient(puddle2X, puddle2Y, 5, puddle2X, puddle2Y, 35);
+    puddle2G.addColorStop(0, 'rgba(180, 160, 140, 0.2)');
+    puddle2G.addColorStop(1, 'rgba(180, 160, 140, 0)');
+    ctx.fillStyle = puddle2G;
+    ctx.beginPath();
+    ctx.ellipse(puddle2X, puddle2Y, 35, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Rain splashes on the floor
+    for (let i = 0; i < 15; i++) {
+      const sx = (i * 71 + t * 300) % w;
+      const sy = floorY + ((i * 37 + t * 500) % (h - floorY));
+      const age = ((t * 2 + i) % 1);
+      const alpha = (1 - age) * 0.4;
+      ctx.strokeStyle = `rgba(180, 200, 230, ${alpha})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(sx, sy, 3 + age * 6, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
     // Rain behind the playfield
     ctx.strokeStyle = 'rgba(180, 200, 230, 0.4)';
     ctx.lineWidth = 1;
