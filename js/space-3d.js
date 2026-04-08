@@ -96,13 +96,43 @@ export class Space3D {
 
     this.bulletMeshes = [];
     for (let i = 0; i < 100; i++) {
-      const geo = new THREE.SphereGeometry(4, 8, 8);
-      const mat = new THREE.MeshBasicMaterial({ color: 0xffdd44 });
-      const mesh = new THREE.Mesh(geo, mat);
-      mesh.visible = false;
-      this.scene.add(mesh);
-      this.bulletMeshes.push(mesh);
+      const grp = new THREE.Group();
+      // Core bullet
+      const coreGeo = new THREE.SphereGeometry(5, 10, 10);
+      const coreMat = new THREE.MeshBasicMaterial({ color: 0xffffee });
+      const core = new THREE.Mesh(coreGeo, coreMat);
+      grp.add(core);
+      // Glow halo
+      const glowGeo = new THREE.SphereGeometry(12, 10, 10);
+      const glowMat = new THREE.MeshBasicMaterial({ color: 0xffdd44, transparent: true, opacity: 0.4, depthWrite: false });
+      const glow = new THREE.Mesh(glowGeo, glowMat);
+      grp.add(glow);
+      // Trail
+      const trailGeo = new THREE.SphereGeometry(8, 8, 8);
+      const trailMat = new THREE.MeshBasicMaterial({ color: 0xffaa22, transparent: true, opacity: 0.3, depthWrite: false });
+      const trail = new THREE.Mesh(trailGeo, trailMat);
+      trail.position.set(0, 0, 0);
+      grp.add(trail);
+      // Point light
+      const light = new THREE.PointLight(0xffdd44, 1, 80);
+      grp.add(light);
+      grp.userData = { core, glow, trail, light };
+      grp.visible = false;
+      this.scene.add(grp);
+      this.bulletMeshes.push(grp);
     }
+
+    // Muzzle flash on ship
+    const flashGeo = new THREE.SphereGeometry(15, 12, 12);
+    const flashMat = new THREE.MeshBasicMaterial({ color: 0xffff88, transparent: true, opacity: 0, depthWrite: false });
+    this.muzzleFlash = new THREE.Mesh(flashGeo, flashMat);
+    this.muzzleFlash.position.set(0, 0, -30);
+    this.shipGroup.add(this.muzzleFlash);
+    this.muzzleLight = new THREE.PointLight(0xffff88, 0, 200);
+    this.muzzleLight.position.set(0, 0, -30);
+    this.shipGroup.add(this.muzzleLight);
+    this.muzzleTimer = 0;
+    this.lastFireCD = 0;
 
     this.alienMeshes = [];
     for (let i = 0; i < 15; i++) {
@@ -269,17 +299,42 @@ export class Space3D {
       }
     }
 
-    // Bullets
+    // Bullets with glow + trail
     for (let i = 0; i < this.bulletMeshes.length; i++) {
       const b = view.bullets[i];
       const m = this.bulletMeshes[i];
       if (b && b.active) {
         m.visible = true;
-        m.position.set((b.x / devicePixelRatio - cx) * 1.5, 8, -(b.y / devicePixelRatio - cy) * 1.5);
-        m.material.color.set(b.color);
+        m.position.set((b.x / devicePixelRatio - cx) * 1.5, 4, -(b.y / devicePixelRatio - cy) * 1.5);
+        // Orient trail behind based on velocity
+        const vAngle = Math.atan2(b.vy, b.vx);
+        m.userData.trail.position.set(-Math.cos(vAngle) * 12, 0, Math.sin(vAngle) * 12);
+        const c = b.color || '#ffdd44';
+        m.userData.core.material.color.setStyle('#ffffff');
+        m.userData.glow.material.color.setStyle(c);
+        m.userData.trail.material.color.setStyle(c);
+        m.userData.light.color.setStyle(c);
+        // Pulse
+        const p = 0.9 + Math.sin(Date.now() / 50) * 0.2;
+        m.userData.glow.scale.setScalar(p);
       } else {
         m.visible = false;
       }
+    }
+
+    // Muzzle flash — detect new shot
+    if (view.fireCooldown > this.lastFireCD + 0.01) {
+      this.muzzleTimer = 0.12;
+    }
+    this.lastFireCD = view.fireCooldown;
+    if (this.muzzleTimer > 0) {
+      this.muzzleTimer -= 0.016;
+      this.muzzleFlash.material.opacity = Math.max(0, this.muzzleTimer * 8);
+      this.muzzleFlash.scale.setScalar(1 + Math.random() * 0.5);
+      this.muzzleLight.intensity = this.muzzleTimer * 30;
+    } else {
+      this.muzzleFlash.material.opacity = 0;
+      this.muzzleLight.intensity = 0;
     }
 
     // Aliens
