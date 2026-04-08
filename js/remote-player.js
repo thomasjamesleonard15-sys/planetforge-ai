@@ -105,23 +105,11 @@ export class RemotePlayerPool {
 
       ctx.globalAlpha = 0.9;
 
-      // Directional cast shadow
-      ctx.save();
-      ctx.translate(s.x, s.y + r + 18);
-      ctx.transform(1, 0, -0.4, 0.3, 0, 0);
       ctx.fillStyle = 'rgba(0,0,0,0.4)';
       ctx.beginPath();
-      ctx.moveTo(-r * 0.7, 0);
-      ctx.lineTo(r * 0.7, 0);
-      ctx.lineTo(r * 0.5, -r * 2.5);
-      ctx.lineTo(-r * 0.5, -r * 2.5);
-      ctx.closePath();
+      ctx.ellipse(s.x + 8, s.y + r + 20, r * 1.6, r * 0.4, -0.3, 0, Math.PI * 2);
       ctx.fill();
-      ctx.beginPath();
-      ctx.ellipse(0, -r * 2.5, r * 0.5, r * 0.15, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
       ctx.beginPath();
       ctx.ellipse(s.x, s.y + r + 18, r * 0.7, r * 0.2, 0, 0, Math.PI * 2);
       ctx.fill();
