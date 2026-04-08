@@ -15,7 +15,7 @@ const BOARD_RANGE = 80;
 export class SpaceView {
   constructor(galaxyPlanets) {
     this.shipX = 0; this.shipY = 0; this.shipVX = 0; this.shipVY = 0;
-    this.shipAngle = -Math.PI / 2; this.shipRadius = 18; this.shipHealth = 100;
+    this.shipAngle = -Math.PI / 2; this.shipRadius = 22; this.shipHealth = 100;
     this.shipThrust = false; this.screenW = 0; this.screenH = 0;
     this.score = 0; this.metal = 0; this.weaponIndex = 0;
     this.fireCooldown = 0; this.gameOver = false;
@@ -478,24 +478,25 @@ export class SpaceView {
     }
     for (const a of this.asteroids) {
       if (!a.active) continue;
-      const dx = this.shipX - a.x, dy = this.shipY - a.y;
+      let dx = this.shipX - a.x, dy = this.shipY - a.y;
       const minDist = this.shipRadius + a.r;
-      const distSq = dx * dx + dy * dy;
-      if (distSq < minDist * minDist && distSq > 1) {
-        const dist = Math.sqrt(distSq);
-        const pa = Math.atan2(dy, dx);
-        const overlap = minDist - dist;
-        // Push ship out of asteroid
-        this.shipX += Math.cos(pa) * overlap;
-        this.shipY += Math.sin(pa) * overlap;
-        // Bounce ship velocity off asteroid
-        const nvx = Math.cos(pa), nvy = Math.sin(pa);
+      let distSq = dx * dx + dy * dy;
+      if (distSq < minDist * minDist) {
+        let dist = Math.sqrt(distSq);
+        if (dist < 0.5) { dx = 1; dy = 0; dist = 1; }
+        const nvx = dx / dist, nvy = dy / dist;
+        const overlap = minDist - dist + 1;
+        // Hard push ship out of asteroid (completely outside)
+        this.shipX += nvx * overlap;
+        this.shipY += nvy * overlap;
+        // Reflect velocity going into the asteroid (zero out inward component)
         const dot = this.shipVX * nvx + this.shipVY * nvy;
         if (dot < 0) {
-          this.shipVX -= 1.8 * dot * nvx;
-          this.shipVY -= 1.8 * dot * nvy;
+          // Remove inward component and add a bounce
+          this.shipVX -= dot * nvx * 1.5;
+          this.shipVY -= dot * nvy * 1.5;
         }
-        // Small impact damage
+        // Impact damage
         const impactSpeed = Math.abs(dot);
         if (impactSpeed > 30) {
           this.shipHealth -= Math.min(15, impactSpeed * 0.05);

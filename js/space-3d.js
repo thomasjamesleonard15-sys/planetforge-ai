@@ -243,8 +243,8 @@ export class Space3D {
   syncFromView(view) {
     const cx = view.screenW / 2 / devicePixelRatio;
     const cy = view.screenH / 2 / devicePixelRatio;
-    const sx = (view.shipX / devicePixelRatio - cx) * 1.5;
-    const sy = -(view.shipY / devicePixelRatio - cy) * 1.5;
+    const sx = (view.shipX / devicePixelRatio - cx) ;
+    const sy = -(view.shipY / devicePixelRatio - cy) ;
 
     this.shipGroup.position.set(sx, 0, -sy);
     this.shipGroup.rotation.y = -view.shipAngle - Math.PI / 2;
@@ -275,8 +275,8 @@ export class Space3D {
     // Planets
     for (let i = 0; i < view.planets.length && i < this.planetMeshes.length; i++) {
       const p = view.planets[i];
-      const px = (p.spaceX / devicePixelRatio - cx) * 1.5;
-      const py = -(p.spaceY / devicePixelRatio - cy) * 1.5;
+      const px = (p.spaceX / devicePixelRatio - cx) ;
+      const py = -(p.spaceY / devicePixelRatio - cy) ;
       const m = this.planetMeshes[i];
       m.position.set(px, 0, -py);
       if (m.userData.body) m.userData.body.rotation.y += 0.002;
@@ -290,7 +290,7 @@ export class Space3D {
       const m = this.asteroidMeshes[i];
       if (a && a.active) {
         m.visible = true;
-        m.position.set((a.x / devicePixelRatio - cx) * 1.5, Math.sin(a.x * 0.01) * 30, -(a.y / devicePixelRatio - cy) * 1.5);
+        m.position.set((a.x / devicePixelRatio - cx) , Math.sin(a.x * 0.01) * 30, -(a.y / devicePixelRatio - cy) );
         m.rotation.x = a.rot;
         m.rotation.y = a.rot * 0.7;
         m.scale.setScalar(a.r / 25);
@@ -305,7 +305,7 @@ export class Space3D {
       const m = this.bulletMeshes[i];
       if (b && b.active) {
         m.visible = true;
-        m.position.set((b.x / devicePixelRatio - cx) * 1.5, 4, -(b.y / devicePixelRatio - cy) * 1.5);
+        m.position.set((b.x / devicePixelRatio - cx) , 4, -(b.y / devicePixelRatio - cy) );
         // Orient trail behind based on velocity
         const vAngle = Math.atan2(b.vy, b.vx);
         m.userData.trail.position.set(-Math.cos(vAngle) * 12, 0, Math.sin(vAngle) * 12);
@@ -343,7 +343,7 @@ export class Space3D {
       const m = this.alienMeshes[i];
       if (a && a.active) {
         m.visible = true;
-        m.position.set((a.x / devicePixelRatio - cx) * 1.5, Math.sin(Date.now() / 400 + i) * 15, -(a.y / devicePixelRatio - cy) * 1.5);
+        m.position.set((a.x / devicePixelRatio - cx) , Math.sin(Date.now() / 400 + i) * 15, -(a.y / devicePixelRatio - cy) );
         if (m.userData.body) {
           m.userData.body.material.color.set(a.color);
           m.userData.body.material.emissive.set(a.color).multiplyScalar(0.3);
