@@ -39,6 +39,37 @@ export function renderSpaceWorld(ctx, view) {
   ctx.fillRect(0, 0, view.screenW, view.screenH);
   ctx.restore();
 
+  // Distant galaxies (slow parallax)
+  const galX = ((view.screenW * 0.15 - view.shipVX * 0.002) % view.screenW + view.screenW) % view.screenW;
+  const galY = ((view.screenH * 0.25 - view.shipVY * 0.002) % view.screenH + view.screenH) % view.screenH;
+  ctx.save();
+  ctx.translate(galX, galY);
+  ctx.rotate(t * 0.02);
+  const gal1 = ctx.createRadialGradient(0, 0, 5, 0, 0, 60);
+  gal1.addColorStop(0, 'rgba(255, 220, 180, 0.3)');
+  gal1.addColorStop(0.3, 'rgba(200, 150, 255, 0.15)');
+  gal1.addColorStop(1, 'rgba(80, 50, 150, 0)');
+  ctx.fillStyle = gal1;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 60, 18, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  const gal2X = ((view.screenW * 0.8 - view.shipVX * 0.003) % view.screenW + view.screenW) % view.screenW;
+  const gal2Y = ((view.screenH * 0.7 - view.shipVY * 0.003) % view.screenH + view.screenH) % view.screenH;
+  ctx.save();
+  ctx.translate(gal2X, gal2Y);
+  ctx.rotate(-t * 0.015 + 1.2);
+  const gal2 = ctx.createRadialGradient(0, 0, 5, 0, 0, 50);
+  gal2.addColorStop(0, 'rgba(180, 220, 255, 0.25)');
+  gal2.addColorStop(0.4, 'rgba(80, 150, 220, 0.12)');
+  gal2.addColorStop(1, 'rgba(20, 50, 100, 0)');
+  ctx.fillStyle = gal2;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 50, 14, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
   // Parallax stars — 3 layers
   for (const s of view.stars) {
     const layer = s.r > 1.2 ? 0.04 : s.r > 0.8 ? 0.025 : 0.012;
@@ -55,6 +86,42 @@ export function renderSpaceWorld(ctx, view) {
     ctx.beginPath();
     ctx.arc(sx, sy, s.r, 0, Math.PI * 2);
     ctx.fillStyle = `rgba(255,255,255,${twinkle})`;
+    ctx.fill();
+    // Cross-shaped lens flare on brightest stars
+    if (s.r > 1.3 && twinkle > 0.6) {
+      ctx.strokeStyle = `rgba(255,255,255,${twinkle * 0.3})`;
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(sx - s.r * 4, sy);
+      ctx.lineTo(sx + s.r * 4, sy);
+      ctx.moveTo(sx, sy - s.r * 4);
+      ctx.lineTo(sx, sy + s.r * 4);
+      ctx.stroke();
+    }
+  }
+
+  // Shooting stars (occasional)
+  const shootPhase = (t * 0.3) % 5;
+  if (shootPhase < 1.5) {
+    const progress = shootPhase / 1.5;
+    const sx = view.screenW * 0.1 + progress * view.screenW * 0.8;
+    const sy = view.screenH * 0.15 + progress * view.screenH * 0.3;
+    const alpha = Math.sin(progress * Math.PI);
+    ctx.strokeStyle = `rgba(255, 240, 200, ${alpha})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(sx - 40, sy - 15);
+    ctx.stroke();
+    ctx.strokeStyle = `rgba(255, 220, 150, ${alpha * 0.3})`;
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(sx - 30, sy - 11);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(sx, sy, 2, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,255,255,${alpha})`;
     ctx.fill();
   }
 

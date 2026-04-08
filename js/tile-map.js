@@ -85,32 +85,102 @@ export class TileMap {
     const ts = TILE_SIZE;
     switch (tile) {
       case TILE.EMPTY: {
-        // Subtle grass tile with noise
-        const seed = ((sx * 13) ^ (sy * 7)) & 7;
-        const base = seed > 3 ? '#3a4a25' : '#324019';
-        ctx.fillStyle = base;
+        // Rich grass with variation
+        const seed = ((sx * 13) ^ (sy * 7)) & 15;
+        // Base gradient per tile
+        const bg = ctx.createLinearGradient(sx, sy, sx + ts, sy + ts);
+        const variant = seed & 3;
+        if (variant === 0) { bg.addColorStop(0, '#3a5020'); bg.addColorStop(1, '#1a2a08'); }
+        else if (variant === 1) { bg.addColorStop(0, '#425524'); bg.addColorStop(1, '#1f2e10'); }
+        else if (variant === 2) { bg.addColorStop(0, '#3a4a1e'); bg.addColorStop(1, '#1a2608'); }
+        else { bg.addColorStop(0, '#3e5020'); bg.addColorStop(1, '#1a2608'); }
+        ctx.fillStyle = bg;
         ctx.fillRect(sx, sy, ts, ts);
         // Grass blades
-        ctx.fillStyle = seed > 5 ? '#4a5a30' : '#3a4a22';
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < 5; i++) {
           const gx = sx + ((seed * 11 + i * 17) % ts);
           const gy = sy + ((seed * 7 + i * 13) % ts);
+          ctx.fillStyle = i % 2 === 0 ? '#4a6028' : '#557030';
           ctx.fillRect(gx, gy, 2, 3);
+          ctx.fillRect(gx + 1, gy - 1, 1, 2);
+        }
+        // Occasional decoration
+        if (seed === 3) {
+          // Small rock
+          const cx = sx + ts / 2, cy = sy + ts / 2;
+          ctx.fillStyle = '#555';
+          ctx.beginPath();
+          ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#777';
+          ctx.beginPath();
+          ctx.arc(cx - 1, cy - 1, 1, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (seed === 7) {
+          // Flowers
+          const fx = sx + ts * 0.3, fy = sy + ts * 0.4;
+          ctx.fillStyle = '#2a4a10';
+          ctx.fillRect(fx, fy, 1, 4);
+          ctx.fillStyle = '#ffaa44';
+          ctx.beginPath();
+          ctx.arc(fx, fy, 1.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#ffdd88';
+          ctx.fillRect(fx, fy, 1, 1);
+        } else if (seed === 11) {
+          // Tall grass tufts
+          ctx.strokeStyle = '#667028';
+          ctx.lineWidth = 1;
+          for (let i = 0; i < 4; i++) {
+            const gx = sx + 8 + i * 8;
+            const gy = sy + 16 + (i % 2) * 4;
+            ctx.beginPath();
+            ctx.moveTo(gx, gy + 6);
+            ctx.lineTo(gx - 1, gy);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(gx, gy + 6);
+            ctx.lineTo(gx + 1, gy);
+            ctx.stroke();
+          }
+        } else if (seed === 13) {
+          // Mushroom
+          const mx = sx + ts * 0.6, my = sy + ts * 0.6;
+          ctx.fillStyle = '#aa7744';
+          ctx.fillRect(mx, my, 2, 3);
+          ctx.fillStyle = '#cc3333';
+          ctx.beginPath();
+          ctx.arc(mx + 1, my, 3, Math.PI, 0);
+          ctx.fill();
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(mx, my - 1, 1, 1);
+          ctx.fillRect(mx + 2, my - 2, 1, 1);
         }
         break;
       }
       case TILE.WATER: {
         const wg = ctx.createLinearGradient(sx, sy, sx, sy + ts);
-        wg.addColorStop(0, '#1a4a8a');
-        wg.addColorStop(0.5, '#1a3a6a');
-        wg.addColorStop(1, '#0a2a5a');
+        wg.addColorStop(0, '#2a5c9a');
+        wg.addColorStop(0.3, '#1e4a80');
+        wg.addColorStop(0.7, '#163a6c');
+        wg.addColorStop(1, '#0a2450');
         ctx.fillStyle = wg;
         ctx.fillRect(sx, sy, ts, ts);
-        // Wave shimmer
-        const t = Date.now() / 800;
-        ctx.fillStyle = `rgba(150,200,255,${0.1 + Math.sin(t + sx * 0.05) * 0.1})`;
-        ctx.fillRect(sx + 4, sy + 8, ts - 8, 2);
-        ctx.fillRect(sx + 8, sy + 20, ts - 16, 2);
+        // Moving waves
+        const t = Date.now() / 600;
+        const waveOffset = Math.sin(t + sx * 0.02 + sy * 0.01) * 6;
+        ctx.fillStyle = `rgba(180, 220, 255, ${0.15 + Math.sin(t + sx * 0.05) * 0.1})`;
+        ctx.fillRect(sx + 4, sy + 10 + waveOffset, ts - 8, 2);
+        ctx.fillStyle = `rgba(150, 200, 255, ${0.15 + Math.sin(t * 1.3 + sy * 0.04) * 0.1})`;
+        ctx.fillRect(sx + 8, sy + 22 - waveOffset * 0.5, ts - 16, 2);
+        ctx.fillStyle = `rgba(200, 230, 255, ${0.1 + Math.sin(t * 0.7 + sx * 0.03) * 0.08})`;
+        ctx.fillRect(sx + 6, sy + 34 + waveOffset * 0.7, ts - 12, 1);
+        // Specular sparkles
+        const sparkle = (Math.sin(t * 2 + sx * 0.1) + 1) * 0.5;
+        if (sparkle > 0.8) {
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+          ctx.fillRect(sx + ts * 0.4, sy + ts * 0.3, 2, 2);
+        }
         break;
       }
       case TILE.ROCK: {
