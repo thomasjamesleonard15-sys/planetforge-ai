@@ -7,11 +7,11 @@ export function renderSpaceFPS(ctx, view) {
   const cy = h / 2;
   const focal = (w / 2) / Math.tan(FOV / 2);
 
-  // Background — deep space
+  // Pitch-black space
   const bg = ctx.createRadialGradient(cx, cy, 50, cx, cy, Math.max(w, h));
-  bg.addColorStop(0, '#0a0820');
-  bg.addColorStop(0.5, '#050510');
-  bg.addColorStop(1, '#020208');
+  bg.addColorStop(0, '#020208');
+  bg.addColorStop(0.5, '#010104');
+  bg.addColorStop(1, '#000000');
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, w, h);
 

@@ -1,11 +1,11 @@
 const LAND_RANGE = 1.6;
 
 export function renderSpaceWorld(ctx, view) {
-  // Deep space gradient background
+  // Pitch-black deep space
   const bg = ctx.createRadialGradient(view.screenW / 2, view.screenH / 2, 0, view.screenW / 2, view.screenH / 2, Math.max(view.screenW, view.screenH));
-  bg.addColorStop(0, '#0a0820');
-  bg.addColorStop(0.5, '#050510');
-  bg.addColorStop(1, '#020208');
+  bg.addColorStop(0, '#020208');
+  bg.addColorStop(0.5, '#010104');
+  bg.addColorStop(1, '#000000');
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, view.screenW, view.screenH);
 
@@ -15,26 +15,26 @@ export function renderSpaceWorld(ctx, view) {
   const neb1X = (view.screenW * 0.3 - view.shipVX * 0.005 + Math.sin(t) * 30);
   const neb1Y = (view.screenH * 0.3 - view.shipVY * 0.005);
   const neb1 = ctx.createRadialGradient(neb1X, neb1Y, 20, neb1X, neb1Y, 250);
-  neb1.addColorStop(0, 'rgba(100, 50, 180, 0.25)');
-  neb1.addColorStop(0.5, 'rgba(60, 20, 120, 0.1)');
-  neb1.addColorStop(1, 'rgba(40, 10, 80, 0)');
+  neb1.addColorStop(0, 'rgba(60, 20, 100, 0.12)');
+  neb1.addColorStop(0.5, 'rgba(30, 10, 60, 0.05)');
+  neb1.addColorStop(1, 'rgba(20, 5, 40, 0)');
   ctx.fillStyle = neb1;
   ctx.fillRect(0, 0, view.screenW, view.screenH);
 
   const neb2X = (view.screenW * 0.7 - view.shipVX * 0.004 - Math.cos(t * 0.8) * 40);
   const neb2Y = (view.screenH * 0.6 - view.shipVY * 0.004);
   const neb2 = ctx.createRadialGradient(neb2X, neb2Y, 20, neb2X, neb2Y, 220);
-  neb2.addColorStop(0, 'rgba(50, 100, 200, 0.2)');
-  neb2.addColorStop(0.5, 'rgba(20, 50, 130, 0.08)');
-  neb2.addColorStop(1, 'rgba(10, 20, 60, 0)');
+  neb2.addColorStop(0, 'rgba(30, 60, 110, 0.1)');
+  neb2.addColorStop(0.5, 'rgba(10, 25, 60, 0.04)');
+  neb2.addColorStop(1, 'rgba(5, 10, 30, 0)');
   ctx.fillStyle = neb2;
   ctx.fillRect(0, 0, view.screenW, view.screenH);
 
   const neb3X = (view.screenW * 0.5 - view.shipVX * 0.003 + Math.sin(t * 0.5) * 50);
   const neb3Y = (view.screenH * 0.8 - view.shipVY * 0.003);
   const neb3 = ctx.createRadialGradient(neb3X, neb3Y, 20, neb3X, neb3Y, 180);
-  neb3.addColorStop(0, 'rgba(180, 60, 100, 0.18)');
-  neb3.addColorStop(1, 'rgba(80, 20, 40, 0)');
+  neb3.addColorStop(0, 'rgba(100, 30, 60, 0.08)');
+  neb3.addColorStop(1, 'rgba(40, 10, 20, 0)');
   ctx.fillStyle = neb3;
   ctx.fillRect(0, 0, view.screenW, view.screenH);
   ctx.restore();
