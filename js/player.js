@@ -72,46 +72,101 @@ export class Player {
     if (blink) return;
 
     const sk = this.skin;
+    const r = this.radius;
+
+    // Soft shadow underneath
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(s.x, s.y + r + 2, r * 0.8, r * 0.25, 0, 0, Math.PI * 2);
+    ctx.fill();
 
     // Detail behind body (cape, etc)
     if (sk.detail === 'cape') {
-      renderSkinDetail(ctx, s.x, s.y, this.radius, sk);
+      renderSkinDetail(ctx, s.x, s.y, r, sk);
     }
 
-    // Body
+    // Body — head sphere with strong shading
     ctx.beginPath();
-    ctx.arc(s.x, s.y, this.radius, 0, Math.PI * 2);
-    const grad = ctx.createRadialGradient(s.x - 3, s.y - 3, 2, s.x, s.y, this.radius);
-    grad.addColorStop(0, sk.body1);
+    ctx.arc(s.x, s.y, r, 0, Math.PI * 2);
+    const grad = ctx.createRadialGradient(s.x - r * 0.4, s.y - r * 0.5, r * 0.05, s.x, s.y, r * 1.1);
+    grad.addColorStop(0, this.lighten(sk.body1, 0.4));
+    grad.addColorStop(0.4, sk.body1);
     grad.addColorStop(1, sk.body2);
     ctx.fillStyle = grad;
     ctx.fill();
+    // Outline
+    ctx.strokeStyle = this.darken(sk.body2, 0.5);
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
 
-    // Visor
+    // Helmet rim highlight
     ctx.beginPath();
-    ctx.arc(s.x, s.y - 3, 5, 0, Math.PI * 2);
-    ctx.fillStyle = sk.visor;
+    ctx.arc(s.x, s.y, r - 1, Math.PI + 0.4, Math.PI * 2 - 0.4);
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Visor — bigger, more reflective
+    ctx.beginPath();
+    ctx.ellipse(s.x, s.y - 2, r * 0.55, r * 0.4, 0, 0, Math.PI * 2);
+    const visGrad = ctx.createLinearGradient(s.x, s.y - r * 0.4, s.x, s.y + r * 0.4);
+    visGrad.addColorStop(0, this.lighten(sk.visor, 0.5));
+    visGrad.addColorStop(0.5, sk.visor);
+    visGrad.addColorStop(1, this.darken(sk.visor, 0.5));
+    ctx.fillStyle = visGrad;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    // Visor highlight
+    ctx.beginPath();
+    ctx.ellipse(s.x - r * 0.2, s.y - r * 0.2, r * 0.15, r * 0.08, -0.5, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
     ctx.fill();
 
     // Detail on top of body
     if (sk.detail && sk.detail !== 'cape') {
-      renderSkinDetail(ctx, s.x, s.y, this.radius, sk);
+      renderSkinDetail(ctx, s.x, s.y, r, sk);
     }
 
-    // Health bar
-    const barW = 30;
-    const barH = 4;
+    // Health bar with glow when low
+    const barW = 32;
+    const barH = 5;
     const hpPct = this.health / this.maxHealth;
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.fillRect(s.x - barW / 2, s.y - this.radius - 10, barW, barH);
-    ctx.fillStyle = hpPct > 0.3 ? '#44ff66' : '#ff4444';
-    ctx.fillRect(s.x - barW / 2, s.y - this.radius - 10, barW * hpPct, barH);
+    const hpColor = hpPct > 0.5 ? '#44ff66' : hpPct > 0.25 ? '#ffaa22' : '#ff4444';
+    if (hpPct < 0.3) {
+      ctx.globalAlpha = 0.5 + Math.sin(Date.now() / 100) * 0.3;
+      ctx.fillStyle = hpColor;
+      ctx.fillRect(s.x - barW / 2 - 2, s.y - r - 13, barW + 4, barH + 4);
+      ctx.globalAlpha = 1;
+    }
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(s.x - barW / 2 - 1, s.y - r - 12, barW + 2, barH + 2);
+    ctx.fillStyle = hpColor;
+    ctx.fillRect(s.x - barW / 2, s.y - r - 11, barW * hpPct, barH);
 
-    // Skin name
-    ctx.font = '9px -apple-system, system-ui, sans-serif';
+    // Name with shadow
+    ctx.font = 'bold 10px -apple-system, system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillStyle = 'rgba(255,255,255,0.4)';
-    ctx.fillText(sk.name, s.x, s.y + this.radius + 12);
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillText(sk.name, s.x + 1, s.y + r + 14);
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.fillText(sk.name, s.x, s.y + r + 13);
     ctx.textAlign = 'left';
+  }
+
+  lighten(hex, amt) {
+    const c = this.parseHex(hex);
+    return `rgb(${Math.min(255, c[0] + 255 * amt) | 0},${Math.min(255, c[1] + 255 * amt) | 0},${Math.min(255, c[2] + 255 * amt) | 0})`;
+  }
+  darken(hex, amt) {
+    const c = this.parseHex(hex);
+    return `rgb(${Math.max(0, c[0] - 255 * amt) | 0},${Math.max(0, c[1] - 255 * amt) | 0},${Math.max(0, c[2] - 255 * amt) | 0})`;
+  }
+  parseHex(hex) {
+    if (!hex || hex[0] !== '#') return [128, 128, 128];
+    const h = hex.replace('#', '');
+    if (h.length === 3) return [parseInt(h[0] + h[0], 16), parseInt(h[1] + h[1], 16), parseInt(h[2] + h[2], 16)];
+    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
   }
 }

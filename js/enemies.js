@@ -100,24 +100,88 @@ export class EnemySystem {
       if (!e.active) continue;
       if (!camera.isVisible(e.x, e.y, e.radius + 10)) continue;
       const s = camera.worldToScreen(e.x, e.y);
-      // Body
+      const r = e.radius;
+      const t = Date.now() / 200;
+      const bob = Math.sin(t + e.x * 0.01) * 1.5;
+
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
       ctx.beginPath();
-      ctx.arc(s.x, s.y, e.radius, 0, Math.PI * 2);
-      ctx.fillStyle = e.color;
+      ctx.ellipse(s.x, s.y + r + 1, r * 0.7, r * 0.2, 0, 0, Math.PI * 2);
       ctx.fill();
-      // Eyes
-      ctx.fillStyle = '#fff';
+
+      // Glow aura
+      const aura = ctx.createRadialGradient(s.x, s.y + bob, r, s.x, s.y + bob, r * 1.6);
+      aura.addColorStop(0, e.color + '55');
+      aura.addColorStop(1, 'transparent');
+      ctx.fillStyle = aura;
       ctx.beginPath();
-      ctx.arc(s.x - e.radius * 0.3, s.y - e.radius * 0.2, e.radius * 0.2, 0, Math.PI * 2);
-      ctx.arc(s.x + e.radius * 0.3, s.y - e.radius * 0.2, e.radius * 0.2, 0, Math.PI * 2);
+      ctx.arc(s.x, s.y + bob, r * 1.6, 0, Math.PI * 2);
       ctx.fill();
-      // Health
+
+      // Body with shading
+      ctx.beginPath();
+      ctx.arc(s.x, s.y + bob, r, 0, Math.PI * 2);
+      const grad = ctx.createRadialGradient(s.x - r * 0.4, s.y - r * 0.4 + bob, r * 0.05, s.x, s.y + bob, r * 1.1);
+      grad.addColorStop(0, '#ffffff');
+      grad.addColorStop(0.3, e.color);
+      grad.addColorStop(1, '#000000');
+      ctx.fillStyle = grad;
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Spikes around the body for menace
+      for (let i = 0; i < 6; i++) {
+        const sa = (i / 6) * Math.PI * 2 + t * 0.3;
+        ctx.beginPath();
+        ctx.moveTo(s.x + Math.cos(sa) * r, s.y + bob + Math.sin(sa) * r);
+        ctx.lineTo(s.x + Math.cos(sa) * (r + 4), s.y + bob + Math.sin(sa) * (r + 4));
+        ctx.strokeStyle = e.color;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
+      // Eyes — angry red with glow
+      const eyeGlowL = ctx.createRadialGradient(s.x - r * 0.3, s.y - r * 0.2 + bob, 0, s.x - r * 0.3, s.y - r * 0.2 + bob, r * 0.4);
+      eyeGlowL.addColorStop(0, 'rgba(255,50,50,0.9)');
+      eyeGlowL.addColorStop(1, 'transparent');
+      ctx.fillStyle = eyeGlowL;
+      ctx.fillRect(s.x - r * 0.7, s.y - r * 0.6 + bob, r * 0.8, r * 0.8);
+      const eyeGlowR = ctx.createRadialGradient(s.x + r * 0.3, s.y - r * 0.2 + bob, 0, s.x + r * 0.3, s.y - r * 0.2 + bob, r * 0.4);
+      eyeGlowR.addColorStop(0, 'rgba(255,50,50,0.9)');
+      eyeGlowR.addColorStop(1, 'transparent');
+      ctx.fillStyle = eyeGlowR;
+      ctx.fillRect(s.x - r * 0.1, s.y - r * 0.6 + bob, r * 0.8, r * 0.8);
+      // Eye whites
+      ctx.fillStyle = '#ffeeee';
+      ctx.beginPath();
+      ctx.arc(s.x - r * 0.3, s.y - r * 0.2 + bob, r * 0.22, 0, Math.PI * 2);
+      ctx.arc(s.x + r * 0.3, s.y - r * 0.2 + bob, r * 0.22, 0, Math.PI * 2);
+      ctx.fill();
+      // Pupils
+      ctx.fillStyle = '#ff0000';
+      ctx.beginPath();
+      ctx.arc(s.x - r * 0.3, s.y - r * 0.2 + bob, r * 0.1, 0, Math.PI * 2);
+      ctx.arc(s.x + r * 0.3, s.y - r * 0.2 + bob, r * 0.1, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Mouth
+      ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y + r * 0.2 + bob, r * 0.3, 0.3, Math.PI - 0.3);
+      ctx.stroke();
+
+      // Health bar with backdrop
       if (e.health < e.maxHealth) {
-        const bw = e.radius * 2;
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillRect(s.x - bw / 2, s.y - e.radius - 8, bw, 3);
-        ctx.fillStyle = '#ff4444';
-        ctx.fillRect(s.x - bw / 2, s.y - e.radius - 8, bw * (e.health / e.maxHealth), 3);
+        const bw = e.radius * 2.2;
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
+        ctx.fillRect(s.x - bw / 2 - 1, s.y - e.radius - 9, bw + 2, 5);
+        const hpPct = e.health / e.maxHealth;
+        ctx.fillStyle = hpPct > 0.5 ? '#ffaa22' : '#ff4444';
+        ctx.fillRect(s.x - bw / 2, s.y - e.radius - 8, bw * hpPct, 3);
       }
     }
   }

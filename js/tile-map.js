@@ -84,22 +84,59 @@ export class TileMap {
   renderTile(ctx, sx, sy, tile, data) {
     const ts = TILE_SIZE;
     switch (tile) {
-      case TILE.EMPTY:
-        ctx.fillStyle = ((sx + sy) & 1) ? COLORS.dirt : COLORS.dirtLight;
+      case TILE.EMPTY: {
+        // Subtle grass tile with noise
+        const seed = ((sx * 13) ^ (sy * 7)) & 7;
+        const base = seed > 3 ? '#3a4a25' : '#324019';
+        ctx.fillStyle = base;
         ctx.fillRect(sx, sy, ts, ts);
+        // Grass blades
+        ctx.fillStyle = seed > 5 ? '#4a5a30' : '#3a4a22';
+        for (let i = 0; i < 3; i++) {
+          const gx = sx + ((seed * 11 + i * 17) % ts);
+          const gy = sy + ((seed * 7 + i * 13) % ts);
+          ctx.fillRect(gx, gy, 2, 3);
+        }
         break;
-      case TILE.WATER:
-        ctx.fillStyle = COLORS.water;
+      }
+      case TILE.WATER: {
+        const wg = ctx.createLinearGradient(sx, sy, sx, sy + ts);
+        wg.addColorStop(0, '#1a4a8a');
+        wg.addColorStop(0.5, '#1a3a6a');
+        wg.addColorStop(1, '#0a2a5a');
+        ctx.fillStyle = wg;
         ctx.fillRect(sx, sy, ts, ts);
+        // Wave shimmer
+        const t = Date.now() / 800;
+        ctx.fillStyle = `rgba(150,200,255,${0.1 + Math.sin(t + sx * 0.05) * 0.1})`;
+        ctx.fillRect(sx + 4, sy + 8, ts - 8, 2);
+        ctx.fillRect(sx + 8, sy + 20, ts - 16, 2);
         break;
-      case TILE.ROCK:
-        ctx.fillStyle = COLORS.dirt;
+      }
+      case TILE.ROCK: {
+        ctx.fillStyle = '#2a3015';
         ctx.fillRect(sx, sy, ts, ts);
-        ctx.fillStyle = COLORS.rock;
+        // Shaded rock
+        const cx = sx + ts / 2, cy = sy + ts / 2;
+        const rg = ctx.createRadialGradient(cx - 6, cy - 6, 2, cx, cy, ts * 0.45);
+        rg.addColorStop(0, '#9a9a9a');
+        rg.addColorStop(0.6, '#5a5a5a');
+        rg.addColorStop(1, '#2a2a2a');
+        ctx.fillStyle = rg;
         ctx.beginPath();
-        ctx.arc(sx + ts / 2, sy + ts / 2, ts * 0.35, 0, Math.PI * 2);
+        ctx.arc(cx, cy, ts * 0.38, 0, Math.PI * 2);
         ctx.fill();
+        ctx.strokeStyle = '#1a1a1a';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        // Crack
+        ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+        ctx.beginPath();
+        ctx.moveTo(cx - 4, cy - 6);
+        ctx.lineTo(cx + 2, cy + 4);
+        ctx.stroke();
         break;
+      }
       case TILE.FARM:
         ctx.fillStyle = COLORS.farmDirt;
         ctx.fillRect(sx, sy, ts, ts);

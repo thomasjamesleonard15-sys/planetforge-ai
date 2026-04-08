@@ -98,21 +98,65 @@ export class SoldierSystem {
       if (!camera.isVisible(s.x, s.y)) continue;
       const sc = camera.worldToScreen(s.x, s.y);
 
-      // Body
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.beginPath();
+      ctx.ellipse(sc.x, sc.y + 12, 8, 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Body with shading
       ctx.beginPath();
       ctx.arc(sc.x, sc.y, 10, 0, Math.PI * 2);
-      ctx.fillStyle = '#44aa66';
+      const grad = ctx.createRadialGradient(sc.x - 3, sc.y - 3, 1, sc.x, sc.y, 11);
+      grad.addColorStop(0, '#88dd99');
+      grad.addColorStop(0.5, '#44aa66');
+      grad.addColorStop(1, '#225533');
+      ctx.fillStyle = grad;
       ctx.fill();
+      ctx.strokeStyle = '#113322';
+      ctx.lineWidth = 1;
+      ctx.stroke();
 
-      // Helmet
+      // Body armor lines
+      ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+      ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.arc(sc.x, sc.y - 3, 5, Math.PI, 0);
-      ctx.fillStyle = '#336644';
+      ctx.moveTo(sc.x - 6, sc.y + 2);
+      ctx.lineTo(sc.x + 6, sc.y + 2);
+      ctx.stroke();
+
+      // Helmet with shading
+      ctx.beginPath();
+      ctx.arc(sc.x, sc.y - 3, 6, Math.PI, 0);
+      const hg = ctx.createLinearGradient(sc.x - 6, sc.y - 8, sc.x + 6, sc.y);
+      hg.addColorStop(0, '#225533');
+      hg.addColorStop(0.5, '#447755');
+      hg.addColorStop(1, '#113322');
+      ctx.fillStyle = hg;
       ctx.fill();
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      // Helmet stripe
+      ctx.strokeStyle = '#88aa66';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(sc.x - 5, sc.y - 4);
+      ctx.lineTo(sc.x + 5, sc.y - 4);
+      ctx.stroke();
+
+      // Visor slit
+      ctx.fillStyle = '#ff4444';
+      ctx.fillRect(sc.x - 4, sc.y - 2, 8, 1);
 
       // Gun
-      ctx.fillStyle = '#888';
-      ctx.fillRect(sc.x + 5, sc.y - 2, 8, 3);
+      ctx.fillStyle = '#222';
+      ctx.fillRect(sc.x + 5, sc.y - 2, 10, 3);
+      ctx.fillStyle = '#666';
+      ctx.fillRect(sc.x + 5, sc.y - 2, 10, 1);
+      // Muzzle
+      ctx.fillStyle = '#444';
+      ctx.fillRect(sc.x + 14, sc.y - 1, 2, 1);
     }
   }
 }
