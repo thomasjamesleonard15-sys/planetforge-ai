@@ -549,11 +549,10 @@ export class Game {
       if (move.x !== 0 || move.y !== 0) {
         this.surface.player.update(dt, move.x, move.y);
       }
-      if (this.input.punchPressed || this.input.gamepadJustPunch) {
-        this.input.punchPressed = false;
+      if (this.input.consumePunch()) {
         this.surface.tryPunch();
       }
-      if (this.input.spaceDown) {
+      if (this.input.isFiring()) {
         const couldFire = this.surface.player.fireCooldown <= 0;
         this.surface.tryShoot(this.input.mouseX, this.input.mouseY);
         if (this.multiplayerActive && couldFire && this.surface.player.fireCooldown > 0) {
@@ -588,9 +587,16 @@ export class Game {
         }
       }
     } else if (this.state === STATE.SPACE) {
-      if (this.input.spaceDown) {
+      // Gamepad right-stick turns ship in FPS mode
+      if (this.space.fpsMode && (this.input.gamepadLookAxes.x || this.input.gamepadLookAxes.y)) {
+        this.space.shipAngle += this.input.gamepadLookAxes.x * 3 * dt;
+      }
+      if (this.input.isFiring()) {
         const couldFire = this.space.fireCooldown <= 0;
-        this.space.shoot(this.input.mouseX, this.input.mouseY);
+        // In FPS mode, shoot straight ahead
+        const aimX = this.space.fpsMode ? this.space.shipX + Math.cos(this.space.shipAngle) * 100 : this.input.mouseX;
+        const aimY = this.space.fpsMode ? this.space.shipY + Math.sin(this.space.shipAngle) * 100 : this.input.mouseY;
+        this.space.shoot(aimX, aimY);
         if (this.multiplayerActive && couldFire && this.space.fireCooldown > 0) {
           for (const b of this.space.bullets) {
             if (b.active && b.life > 1.7) {
@@ -684,8 +690,26 @@ export class Game {
         if (move.x !== 0 || move.y !== 0) {
           this.batman.player.update(dt, move.x, move.y);
         }
-        if (this.input.spaceDown) {
+        if (this.input.isFiring()) {
           this.batman.tryShoot(this.input.mouseX, this.input.mouseY);
+        }
+        if (this.input.consumePunch()) {
+          const be = this.batman.enemies;
+          if (be) {
+            for (const e of be) {
+              if (!e.active) continue;
+              const dx = e.x - this.batman.player.x, dy = e.y - this.batman.player.y;
+              if (dx * dx + dy * dy < (this.batman.player.radius + e.radius + 30) ** 2) {
+                e.health -= 40;
+                const a = Math.atan2(dy, dx);
+                e.x += Math.cos(a) * 20;
+                e.y += Math.sin(a) * 20;
+                this.batman.particles.emit(e.x, e.y, 8, { color: '#ffdd44', speed: 150, life: 0.3, radius: 3 });
+                if (e.health <= 0) { e.active = false; this.batman.kills++; this.batman.score += e.reward; }
+              }
+            }
+          }
+          this.batman.player.punchAnim = 1;
         }
         this.batman.update(dt);
         if (this.batman.wave >= 5) this.tasks.complete('batman5');
@@ -732,7 +756,7 @@ export class Game {
     } else if (this.state === STATE.COOP) {
       if (this.coop) {
         if (move.x !== 0 || move.y !== 0) this.coop.player.update(dt, move.x, move.y);
-        if (this.input.spaceDown) this.coop.tryShoot(this.input.mouseX, this.input.mouseY);
+        if (this.input.isFiring()) this.coop.tryShoot(this.input.mouseX, this.input.mouseY);
         this.coop.update(dt);
         if (this.multiplayerActive && multiplayer.isHost) this.coop.syncBossState();
         if (this.coop.bossIndex > 0) this.tasks.complete('coop1');
@@ -853,6 +877,22 @@ export class Game {
     ctx.fillStyle = music.muted ? '#666' : '#aab';
     ctx.fillText(music.muted ? '🔇' : '🔊', 22, 124);
     ctx.textAlign = 'left';
+
+    // Gamepad indicator
+    if (this.input.gamepadConnected) {
+      ctx.fillStyle = 'rgba(20, 60, 30, 0.85)';
+      ctx.beginPath();
+      ctx.roundRect(60, 104, 40, 30, 8);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(100, 255, 120, 0.5)';
+      ctx.stroke();
+      ctx.font = '16px -apple-system, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#88ff88';
+      ctx.fillText('🎮', 80, 124);
+      ctx.textAlign = 'left';
+    }
+
     this.tasks.render(ctx, this.width, this.height);
   }
 

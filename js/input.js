@@ -11,12 +11,27 @@ export class InputHandler {
     this.actionLastX = 0;
     this.actionLastY = 0;
     this.gamepadAxes = { x: 0, y: 0 };
+    this.gamepadLookAxes = { x: 0, y: 0 };
     this.gamepadFire = false;
     this.gamepadPunch = false;
     this.gamepadJustPunch = false;
+    this.gamepadJustFire = false;
     this.lastGamepadPunch = false;
+    this.lastGamepadFire = false;
+    this.lastGamepadEnter = false;
+    this.gamepadConnected = false;
+    this.gamepadName = '';
 
-    window.addEventListener('gamepadconnected', () => {});
+    window.addEventListener('gamepadconnected', (e) => {
+      this.gamepadConnected = true;
+      this.gamepadName = e.gamepad ? e.gamepad.id : 'Gamepad';
+      console.log('Gamepad connected:', this.gamepadName);
+    });
+    window.addEventListener('gamepaddisconnected', () => {
+      this.gamepadConnected = false;
+      this.gamepadAxes.x = 0; this.gamepadAxes.y = 0;
+      this.gamepadFire = false; this.gamepadPunch = false;
+    });
     this.keys = new Set();
     this.joystickTouchId = null;
     this.actionTouchId = null;
@@ -135,24 +150,67 @@ export class InputHandler {
     const gps = navigator.getGamepads();
     let gp = null;
     for (const g of gps) { if (g) { gp = g; break; } }
-    if (!gp) { this.gamepadAxes.x = 0; this.gamepadAxes.y = 0; this.gamepadFire = false; this.gamepadPunch = false; return; }
-    const dead = 0.15;
-    const ax = gp.axes[0] || 0;
-    const ay = gp.axes[1] || 0;
-    this.gamepadAxes.x = Math.abs(ax) > dead ? ax : 0;
-    this.gamepadAxes.y = Math.abs(ay) > dead ? ay : 0;
-    // Right trigger or R1 / A button = fire
-    const fire = (gp.buttons[7] && gp.buttons[7].pressed) || (gp.buttons[5] && gp.buttons[5].pressed) || (gp.buttons[0] && gp.buttons[0].pressed);
+    if (!gp) {
+      this.gamepadConnected = false;
+      this.gamepadAxes.x = 0; this.gamepadAxes.y = 0;
+      this.gamepadLookAxes.x = 0; this.gamepadLookAxes.y = 0;
+      this.gamepadFire = false; this.gamepadPunch = false;
+      this.gamepadJustFire = false; this.gamepadJustPunch = false;
+      return;
+    }
+    this.gamepadConnected = true;
+
+    const dead = 0.18;
+    // Left stick — move
+    const lx = gp.axes[0] || 0;
+    const ly = gp.axes[1] || 0;
+    this.gamepadAxes.x = Math.abs(lx) > dead ? lx : 0;
+    this.gamepadAxes.y = Math.abs(ly) > dead ? ly : 0;
+    // Right stick — look/aim
+    const rx = gp.axes[2] || 0;
+    const ry = gp.axes[3] || 0;
+    this.gamepadLookAxes.x = Math.abs(rx) > dead ? rx : 0;
+    this.gamepadLookAxes.y = Math.abs(ry) > dead ? ry : 0;
+
+    // Fire — any of: RT (7), RB (5), A (0)
+    const bFire = gp.buttons;
+    const fire =
+      (bFire[7] && (bFire[7].pressed || bFire[7].value > 0.5)) ||
+      (bFire[5] && bFire[5].pressed) ||
+      (bFire[0] && bFire[0].pressed);
+    this.gamepadJustFire = fire && !this.lastGamepadFire;
+    this.lastGamepadFire = fire;
     this.gamepadFire = fire;
-    // X button (index 2) = punch
+
+    // Punch — X (2)
     const punch = gp.buttons[2] && gp.buttons[2].pressed;
     this.gamepadJustPunch = punch && !this.lastGamepadPunch;
     this.lastGamepadPunch = punch;
     this.gamepadPunch = punch;
-    // Start button = Enter
-    if (gp.buttons[9] && gp.buttons[9].pressed) this.enterPressed = true;
-    // Update spaceDown for shooting
-    if (fire) this.spaceDown = true;
+
+    // Start (9) = Enter
+    const start = gp.buttons[9] && gp.buttons[9].pressed;
+    if (start && !this.lastGamepadEnter) this.enterPressed = true;
+    this.lastGamepadEnter = start;
+
+    // D-pad as directional fallback (buttons 12=up, 13=down, 14=left, 15=right)
+    if (bFire[12] && bFire[12].pressed) this.gamepadAxes.y = -1;
+    if (bFire[13] && bFire[13].pressed) this.gamepadAxes.y = 1;
+    if (bFire[14] && bFire[14].pressed) this.gamepadAxes.x = -1;
+    if (bFire[15] && bFire[15].pressed) this.gamepadAxes.x = 1;
+  }
+
+  isFiring() {
+    return this.spaceDown || this.gamepadFire;
+  }
+
+  consumePunch() {
+    if (this.punchPressed || this.gamepadJustPunch) {
+      this.punchPressed = false;
+      this.gamepadJustPunch = false;
+      return true;
+    }
+    return false;
   }
 
   getMoveVector() {
@@ -165,6 +223,9 @@ export class InputHandler {
     if (this.keys.has('d') || this.keys.has('arrowright')) mx += 1;
     mx += this.gamepadAxes.x;
     my += this.gamepadAxes.y;
+    // Clamp to unit circle
+    const len = Math.sqrt(mx * mx + my * my);
+    if (len > 1) { mx /= len; my /= len; }
     return { x: mx, y: my };
   }
 }
