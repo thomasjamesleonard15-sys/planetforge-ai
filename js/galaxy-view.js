@@ -1,4 +1,4 @@
-import { Planet } from './planet.js';
+import { Planet, PLANET_TYPES } from './planet.js';
 
 const GALAXY_NAMES = [
   'Milky Way',
@@ -70,12 +70,36 @@ export class GalaxyView {
       { ocean: '#1a4a3a', land: '#33aa66', ice: '#aaffcc' },
       { ocean: '#5a3a1a', land: '#aa8833', ice: '#ffddaa' },
     ];
+    const atmospheres = [
+      'rgba(100, 180, 255, 0.15)',
+      'rgba(255, 150, 100, 0.15)',
+      'rgba(200, 150, 255, 0.15)',
+      'rgba(150, 255, 200, 0.15)',
+      'rgba(255, 200, 100, 0.15)',
+      'rgba(150, 255, 150, 0.15)',
+      'rgba(100, 200, 255, 0.18)',
+      'rgba(200, 180, 140, 0.12)',
+      'rgba(150, 255, 80, 0.18)',
+    ];
     const g = this.galaxies[galaxyIdx];
-    const c = colors[g.planets.length % colors.length];
+    const idx = g.planets.length;
+    const c = colors[idx % colors.length];
     const p = new Planet(0, 0, 80);
-    p.colors = { ...c, atmosphere: 'rgba(100, 180, 255, 0.12)' };
+    // Auto-assign a type if not a special planet
+    const specialMap = {
+      'Terra Prime': 'earth',
+      'Gas Station': 'rock',
+      'Batplanet': 'rock',
+      'The Unknown': 'toxic',
+      'Pixel Arena': 'desert',
+      'Zyphor Prime': 'lava',
+      'Red Dwarf Station': 'ice',
+    };
+    p.type = specialMap[name] || PLANET_TYPES[idx % PLANET_TYPES.length];
+    p.seed = Math.random() * 1000;
+    p.colors = { ...c, atmosphere: atmospheres[PLANET_TYPES.indexOf(p.type) % atmospheres.length] || atmospheres[0] };
     p.name = name;
-    p.rotationSpeed = 0.1 + Math.random() * 0.2;
+    p.rotationSpeed = 0.08 + Math.random() * 0.15;
     g.planets.push(p);
   }
 
