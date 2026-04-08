@@ -1,15 +1,60 @@
 const LAND_RANGE = 1.6;
 
 export function renderSpaceWorld(ctx, view) {
-  ctx.fillStyle = '#050510';
+  // Deep space gradient background
+  const bg = ctx.createRadialGradient(view.screenW / 2, view.screenH / 2, 0, view.screenW / 2, view.screenH / 2, Math.max(view.screenW, view.screenH));
+  bg.addColorStop(0, '#0a0820');
+  bg.addColorStop(0.5, '#050510');
+  bg.addColorStop(1, '#020208');
+  ctx.fillStyle = bg;
   ctx.fillRect(0, 0, view.screenW, view.screenH);
 
+  // Nebula clouds (parallax — slowest)
+  const t = Date.now() / 10000;
+  ctx.save();
+  const neb1X = (view.screenW * 0.3 - view.shipVX * 0.005 + Math.sin(t) * 30);
+  const neb1Y = (view.screenH * 0.3 - view.shipVY * 0.005);
+  const neb1 = ctx.createRadialGradient(neb1X, neb1Y, 20, neb1X, neb1Y, 250);
+  neb1.addColorStop(0, 'rgba(100, 50, 180, 0.25)');
+  neb1.addColorStop(0.5, 'rgba(60, 20, 120, 0.1)');
+  neb1.addColorStop(1, 'rgba(40, 10, 80, 0)');
+  ctx.fillStyle = neb1;
+  ctx.fillRect(0, 0, view.screenW, view.screenH);
+
+  const neb2X = (view.screenW * 0.7 - view.shipVX * 0.004 - Math.cos(t * 0.8) * 40);
+  const neb2Y = (view.screenH * 0.6 - view.shipVY * 0.004);
+  const neb2 = ctx.createRadialGradient(neb2X, neb2Y, 20, neb2X, neb2Y, 220);
+  neb2.addColorStop(0, 'rgba(50, 100, 200, 0.2)');
+  neb2.addColorStop(0.5, 'rgba(20, 50, 130, 0.08)');
+  neb2.addColorStop(1, 'rgba(10, 20, 60, 0)');
+  ctx.fillStyle = neb2;
+  ctx.fillRect(0, 0, view.screenW, view.screenH);
+
+  const neb3X = (view.screenW * 0.5 - view.shipVX * 0.003 + Math.sin(t * 0.5) * 50);
+  const neb3Y = (view.screenH * 0.8 - view.shipVY * 0.003);
+  const neb3 = ctx.createRadialGradient(neb3X, neb3Y, 20, neb3X, neb3Y, 180);
+  neb3.addColorStop(0, 'rgba(180, 60, 100, 0.18)');
+  neb3.addColorStop(1, 'rgba(80, 20, 40, 0)');
+  ctx.fillStyle = neb3;
+  ctx.fillRect(0, 0, view.screenW, view.screenH);
+  ctx.restore();
+
+  // Parallax stars — 3 layers
   for (const s of view.stars) {
-    const sx = ((s.x - view.shipVX * 0.02) % view.screenW + view.screenW) % view.screenW;
-    const sy = ((s.y - view.shipVY * 0.02) % view.screenH + view.screenH) % view.screenH;
+    const layer = s.r > 1.2 ? 0.04 : s.r > 0.8 ? 0.025 : 0.012;
+    const sx = ((s.x - view.shipVX * layer) % view.screenW + view.screenW) % view.screenW;
+    const sy = ((s.y - view.shipVY * layer) % view.screenH + view.screenH) % view.screenH;
+    const twinkle = s.a * (0.7 + Math.sin(t * 50 + s.x * 0.1) * 0.3);
+    // Glow halo
+    if (s.r > 1) {
+      ctx.beginPath();
+      ctx.arc(sx, sy, s.r * 3, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,255,255,${twinkle * 0.15})`;
+      ctx.fill();
+    }
     ctx.beginPath();
     ctx.arc(sx, sy, s.r, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(255,255,255,${s.a})`;
+    ctx.fillStyle = `rgba(255,255,255,${twinkle})`;
     ctx.fill();
   }
 
@@ -129,7 +174,7 @@ export function renderSpaceWorld(ctx, view) {
     ctx.textAlign = 'left';
   }
 
-  // Asteroids
+  // Asteroids with shading and craters
   for (const a of view.asteroids) {
     if (!a.active) continue;
     ctx.save();
@@ -145,45 +190,87 @@ export function renderSpaceWorld(ctx, view) {
       i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
     }
     ctx.closePath();
-    ctx.fillStyle = '#665544';
+    // Shaded fill
+    const grad = ctx.createRadialGradient(-a.r * 0.3, -a.r * 0.3, a.r * 0.1, 0, 0, a.r * 1.2);
+    grad.addColorStop(0, '#a89880');
+    grad.addColorStop(0.5, '#665544');
+    grad.addColorStop(1, '#332211');
+    ctx.fillStyle = grad;
     ctx.fill();
-    ctx.strokeStyle = '#998877';
+    ctx.strokeStyle = '#443322';
     ctx.lineWidth = 2;
     ctx.stroke();
+    // Craters
+    const craterCount = 3;
+    for (let i = 0; i < craterCount; i++) {
+      const ca = (i * 2.1) + 0.7;
+      const cd = a.r * 0.4;
+      const cx = Math.cos(ca) * cd;
+      const cy = Math.sin(ca) * cd;
+      const cr = a.r * (0.1 + (i % 2) * 0.05);
+      ctx.beginPath();
+      ctx.arc(cx, cy, cr, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(20, 10, 0, 0.4)';
+      ctx.fill();
+    }
     ctx.restore();
   }
 
-  // Bullets
+  // Bullets with multi-layer glow
   for (const b of view.bullets) {
     if (!b.active) continue;
+    // Outer halo
+    ctx.globalAlpha = 0.15;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r * 5, 0, Math.PI * 2);
+    ctx.fillStyle = b.color;
+    ctx.fill();
+    // Mid glow
+    ctx.globalAlpha = 0.35;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r * 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = b.color;
+    ctx.fill();
+    // Trail
+    ctx.globalAlpha = 0.4;
+    ctx.beginPath();
+    ctx.arc(b.x - b.vx * 0.012, b.y - b.vy * 0.012, b.r * 1.5, 0, Math.PI * 2);
+    ctx.fillStyle = b.color;
+    ctx.fill();
+    // Core
+    ctx.globalAlpha = 1;
     ctx.beginPath();
     ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-    ctx.fillStyle = b.color;
+    ctx.fillStyle = '#ffffff';
     ctx.fill();
-    ctx.globalAlpha = 0.2;
     ctx.beginPath();
-    ctx.arc(b.x, b.y, b.r * 3, 0, Math.PI * 2);
+    ctx.arc(b.x, b.y, b.r * 0.6, 0, Math.PI * 2);
     ctx.fillStyle = b.color;
     ctx.fill();
-    ctx.globalAlpha = 1;
   }
+  ctx.globalAlpha = 1;
 
   // Aliens
   view.aliens.render(ctx);
 
-  // Enemy bullets
+  // Enemy bullets with red glow
   for (const b of view.enemyBullets) {
     if (!b.active) continue;
+    ctx.globalAlpha = 0.15;
     ctx.beginPath();
-    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-    ctx.fillStyle = b.color;
-    ctx.fill();
-    ctx.globalAlpha = 0.25;
-    ctx.beginPath();
-    ctx.arc(b.x, b.y, b.r * 3, 0, Math.PI * 2);
+    ctx.arc(b.x, b.y, b.r * 5, 0, Math.PI * 2);
     ctx.fillStyle = '#ff0022';
     ctx.fill();
+    ctx.globalAlpha = 0.4;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r * 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#ff2244';
+    ctx.fill();
     ctx.globalAlpha = 1;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffaaaa';
+    ctx.fill();
   }
 
   // Particles
@@ -204,12 +291,28 @@ export function renderShip(ctx, view) {
   ctx.rotate(view.shipAngle + Math.PI / 2);
 
   if (view.shipThrust) {
+    // Outer flame
+    const g0 = ctx.createRadialGradient(0, 18, 2, 0, 18, 28);
+    g0.addColorStop(0, 'rgba(255,200,80,0.6)');
+    g0.addColorStop(0.4, 'rgba(255,100,30,0.3)');
+    g0.addColorStop(1, 'rgba(255,60,20,0)');
+    ctx.fillStyle = g0;
+    ctx.beginPath();
+    ctx.arc(0, 18, 28, 0, Math.PI * 2);
+    ctx.fill();
+    // Inner flame
     const g = ctx.createRadialGradient(0, 14, 2, 0, 14, 16);
-    g.addColorStop(0, 'rgba(255,136,50,0.8)');
+    g.addColorStop(0, 'rgba(255,255,200,0.95)');
+    g.addColorStop(0.3, 'rgba(255,180,80,0.8)');
     g.addColorStop(1, 'rgba(255,60,20,0)');
     ctx.fillStyle = g;
     ctx.beginPath();
-    ctx.arc(0, 14, 16, 0, Math.PI * 2);
+    ctx.arc(0, 14 + Math.random() * 3, 14 + Math.random() * 4, 0, Math.PI * 2);
+    ctx.fill();
+    // Hot core
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.beginPath();
+    ctx.arc(0, 12, 4, 0, Math.PI * 2);
     ctx.fill();
   }
 
@@ -251,25 +354,68 @@ export function renderShip(ctx, view) {
     ctx.lineWidth = 2;
     ctx.stroke();
   } else {
+    // Hull shadow underneath
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
     ctx.beginPath();
-    ctx.moveTo(0, -20);
-    ctx.lineTo(-14, 16);
+    ctx.ellipse(0, 18, 14, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Main hull
+    ctx.beginPath();
+    ctx.moveTo(0, -22);
+    ctx.lineTo(-15, 16);
     ctx.lineTo(-6, 10);
     ctx.lineTo(0, 14);
     ctx.lineTo(6, 10);
-    ctx.lineTo(14, 16);
+    ctx.lineTo(15, 16);
     ctx.closePath();
-    const grad = ctx.createLinearGradient(0, -20, 0, 16);
-    grad.addColorStop(0, '#66ccff');
-    grad.addColorStop(1, '#2255aa');
+    const grad = ctx.createLinearGradient(-15, 0, 15, 0);
+    grad.addColorStop(0, '#1a3a66');
+    grad.addColorStop(0.4, '#66ccff');
+    grad.addColorStop(0.6, '#88ddff');
+    grad.addColorStop(1, '#1a3a66');
     ctx.fillStyle = grad;
     ctx.fill();
-    ctx.strokeStyle = '#88ddff';
+    ctx.strokeStyle = '#aaeeff';
     ctx.lineWidth = 1.5;
     ctx.stroke();
+    // Wing accents
+    ctx.fillStyle = '#1a2a44';
+    ctx.beginPath();
+    ctx.moveTo(-12, 12);
+    ctx.lineTo(-15, 16);
+    ctx.lineTo(-8, 14);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(12, 12);
+    ctx.lineTo(15, 16);
+    ctx.lineTo(8, 14);
+    ctx.closePath();
+    ctx.fill();
+    // Hull stripe
+    ctx.strokeStyle = '#ffaa44';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(0, -18);
+    ctx.lineTo(0, 8);
+    ctx.stroke();
+    // Cockpit glow
+    ctx.beginPath();
+    ctx.arc(0, -6, 7, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(170, 238, 255, 0.4)';
+    ctx.fill();
     ctx.beginPath();
     ctx.arc(0, -6, 5, 0, Math.PI * 2);
-    ctx.fillStyle = '#aaeeff';
+    const cg = ctx.createRadialGradient(-1, -8, 0, 0, -6, 5);
+    cg.addColorStop(0, '#ffffff');
+    cg.addColorStop(0.5, '#aaeeff');
+    cg.addColorStop(1, '#4488cc');
+    ctx.fillStyle = cg;
+    ctx.fill();
+    // Highlight
+    ctx.beginPath();
+    ctx.arc(-2, -8, 1.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
     ctx.fill();
   }
 

@@ -21,16 +21,26 @@ export class Planet {
     ctx.save();
     ctx.translate(this.x, this.y);
 
-    // Planet body
+    // Outer glow halo
+    const halo = ctx.createRadialGradient(0, 0, this.radius, 0, 0, this.radius * 1.4);
+    halo.addColorStop(0, this.colors.atmosphere || 'rgba(100, 180, 255, 0.2)');
+    halo.addColorStop(1, 'rgba(100, 180, 255, 0)');
+    ctx.fillStyle = halo;
+    ctx.beginPath();
+    ctx.arc(0, 0, this.radius * 1.4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Planet body with stronger lighting
     ctx.beginPath();
     ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
     const grad = ctx.createRadialGradient(
-      -this.radius * 0.3, -this.radius * 0.3, this.radius * 0.1,
-      0, 0, this.radius
+      -this.radius * 0.4, -this.radius * 0.4, this.radius * 0.05,
+      0, 0, this.radius * 1.1
     );
-    grad.addColorStop(0, '#3aa3e8');
-    grad.addColorStop(0.5, this.colors.ocean);
-    grad.addColorStop(1, '#0d3b66');
+    grad.addColorStop(0, '#88ddff');
+    grad.addColorStop(0.2, '#3aa3e8');
+    grad.addColorStop(0.6, this.colors.ocean);
+    grad.addColorStop(1, '#000511');
     ctx.fillStyle = grad;
     ctx.fill();
 
@@ -73,10 +83,34 @@ export class Planet {
 
     ctx.restore();
 
-    // Atmosphere glow
+    // Specular highlight
+    ctx.save();
     ctx.beginPath();
-    ctx.arc(0, 0, this.radius * 1.08, 0, Math.PI * 2);
-    const atmoGrad = ctx.createRadialGradient(0, 0, this.radius, 0, 0, this.radius * 1.08);
+    ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+    ctx.clip();
+    const spec = ctx.createRadialGradient(-this.radius * 0.4, -this.radius * 0.4, 0, -this.radius * 0.4, -this.radius * 0.4, this.radius * 0.6);
+    spec.addColorStop(0, 'rgba(255, 255, 255, 0.3)');
+    spec.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.fillStyle = spec;
+    ctx.fillRect(-this.radius, -this.radius, this.radius * 2, this.radius * 2);
+    ctx.restore();
+
+    // Terminator shadow on the dark side
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+    ctx.clip();
+    const term = ctx.createRadialGradient(this.radius * 0.4, this.radius * 0.4, 0, this.radius * 0.4, this.radius * 0.4, this.radius * 1.3);
+    term.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    term.addColorStop(1, 'rgba(0, 0, 0, 0.5)');
+    ctx.fillStyle = term;
+    ctx.fillRect(-this.radius, -this.radius, this.radius * 2, this.radius * 2);
+    ctx.restore();
+
+    // Atmosphere glow ring
+    ctx.beginPath();
+    ctx.arc(0, 0, this.radius * 1.1, 0, Math.PI * 2);
+    const atmoGrad = ctx.createRadialGradient(0, 0, this.radius, 0, 0, this.radius * 1.1);
     atmoGrad.addColorStop(0, this.colors.atmosphere);
     atmoGrad.addColorStop(1, 'rgba(100, 180, 255, 0)');
     ctx.fillStyle = atmoGrad;
