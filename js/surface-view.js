@@ -51,6 +51,17 @@ export class SurfaceView {
     this.fpsMode = false;
     this.fpsBtnRect = { x: 0, y: 0, w: 0, h: 0 };
     this.player.fpsAngle = 0;
+    // Ambient floating particles (pollen/dust in the air)
+    this.ambientParticles = [];
+    for (let i = 0; i < 60; i++) {
+      this.ambientParticles.push({
+        x: Math.random() * 2000, y: Math.random() * 2000,
+        vx: (Math.random() - 0.5) * 8, vy: -Math.random() * 5 - 3,
+        r: Math.random() * 1.2 + 0.3, a: Math.random() * 0.5 + 0.2,
+        phase: Math.random() * Math.PI * 2,
+      });
+    }
+    this.grainSeed = 0;
   }
 
   resize(w, h) {
@@ -342,6 +353,19 @@ export class SurfaceView {
     this.lastPlayerHealth = this.player.health;
     if (this.screenShake > 0) this.screenShake = Math.max(0, this.screenShake - dt * 20);
 
+    // Ambient particles drift
+    for (const p of this.ambientParticles) {
+      p.x += p.vx * dt + Math.sin(p.phase) * 5 * dt;
+      p.y += p.vy * dt;
+      p.phase += dt * 2;
+      // Wrap around camera
+      const screenP = this.camera.worldToScreen(p.x, p.y);
+      if (screenP.x < -50) p.x += this.screenW + 100;
+      if (screenP.x > this.screenW + 50) p.x -= this.screenW + 100;
+      if (screenP.y < -50) p.y += this.screenH + 100;
+      if (screenP.y > this.screenH + 50) p.y -= this.screenH + 100;
+    }
+
     // Walking dust
     const moving = Math.abs(this.hud.joystickX) > 0.1 || Math.abs(this.hud.joystickY) > 0.1;
     if (moving) {
@@ -495,8 +519,54 @@ export class SurfaceView {
       this.projectiles.render(ctx, this.camera);
       this.particles.render(ctx, this.camera);
       this.dayNight.render(ctx, this.camera, this.screenW, this.screenH);
+      // Ambient floating particles (pollen/dust)
+      for (const p of this.ambientParticles) {
+        const sp = this.camera.worldToScreen(p.x, p.y);
+        if (sp.x < -10 || sp.x > this.screenW + 10 || sp.y < -10 || sp.y > this.screenH + 10) continue;
+        const tw = p.a * (0.6 + Math.sin(p.phase) * 0.4);
+        ctx.beginPath();
+        ctx.arc(sp.x, sp.y, p.r * 2, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 240, 180, ${tw * 0.15})`;
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(sp.x, sp.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 240, 200, ${tw})`;
+        ctx.fill();
+      }
     }
     ctx.restore();
+
+    // Post-processing: color grading (warm tint)
+    ctx.fillStyle = 'rgba(255, 200, 120, 0.04)';
+    ctx.globalCompositeOperation = 'overlay';
+    ctx.fillRect(0, 0, this.screenW, this.screenH);
+    ctx.globalCompositeOperation = 'source-over';
+
+    // Film grain
+    this.grainSeed++;
+    const grainAlpha = 0.03;
+    const grainSize = 2;
+    for (let i = 0; i < 80; i++) {
+      const gx = (Math.random() * this.screenW) | 0;
+      const gy = (Math.random() * this.screenH) | 0;
+      ctx.fillStyle = `rgba(255,255,255,${grainAlpha})`;
+      ctx.fillRect(gx, gy, grainSize, grainSize);
+      ctx.fillStyle = `rgba(0,0,0,${grainAlpha})`;
+      ctx.fillRect(gx + 3, gy + 3, grainSize, grainSize);
+    }
+
+    // Chromatic aberration on edges (subtle)
+    const aw = this.screenW * 0.05;
+    const cag = ctx.createLinearGradient(0, 0, aw, 0);
+    cag.addColorStop(0, 'rgba(255, 50, 50, 0.08)');
+    cag.addColorStop(1, 'rgba(255, 50, 50, 0)');
+    ctx.fillStyle = cag;
+    ctx.fillRect(0, 0, aw, this.screenH);
+    const cag2 = ctx.createLinearGradient(this.screenW - aw, 0, this.screenW, 0);
+    cag2.addColorStop(0, 'rgba(50, 50, 255, 0)');
+    cag2.addColorStop(1, 'rgba(50, 50, 255, 0.08)');
+    ctx.fillStyle = cag2;
+    ctx.fillRect(this.screenW - aw, 0, aw, this.screenH);
 
     // FPS toggle button
     const fbW = 80, fbH = 36;
