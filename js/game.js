@@ -775,7 +775,6 @@ export class Game {
   }
 
   renderGamepadDebug(ctx) {
-    // Persistent gamepad debug overlay — always visible
     const gps = navigator.getGamepads ? navigator.getGamepads() : [];
     let gp = null;
     let count = 0;
@@ -783,59 +782,52 @@ export class Game {
       if (g) { count++; if (!gp && g.connected) gp = g; }
     }
 
-    // Big unmissable prompt if no gamepad active yet
-    if (!gp && this.state !== STATE.TITLE) {
-      const t = Date.now() / 500;
-      const pulse = 0.6 + Math.sin(t) * 0.4;
-      ctx.globalAlpha = pulse;
-      ctx.fillStyle = 'rgba(40, 10, 10, 0.8)';
-      ctx.fillRect(this.width / 2 - 300, 10, 600, 60);
-      ctx.strokeStyle = '#ff6644';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(this.width / 2 - 300, 10, 600, 60);
-      ctx.font = 'bold 22px -apple-system, system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#ffaa66';
-      ctx.fillText('🎮 PRESS ANY BUTTON ON YOUR CONTROLLER 🎮', this.width / 2, 38);
-      ctx.font = '13px -apple-system, system-ui, sans-serif';
-      ctx.fillStyle = '#ff8866';
-      ctx.fillText('Chrome requires a button press to activate the gamepad', this.width / 2, 58);
-      ctx.globalAlpha = 1;
-      ctx.textAlign = 'left';
-    }
-    const dy = this.height - 90;
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
-    ctx.fillRect(0, dy, 500, 90);
+    const dy = this.height - 240;
+    const w = 560;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.92)';
+    ctx.fillRect(0, dy, w, 240);
     ctx.strokeStyle = gp ? '#44ff66' : '#ff4444';
     ctx.lineWidth = 2;
-    ctx.strokeRect(0, dy, 500, 90);
-    ctx.font = 'bold 12px monospace';
+    ctx.strokeRect(0, dy, w, 240);
+    ctx.font = 'bold 14px monospace';
     ctx.textAlign = 'left';
+    let ly = dy + 18;
     ctx.fillStyle = '#fff';
-    ctx.fillText(`Pads entries: ${gps.length}  Non-null: ${count}  Found: ${gp ? 'YES' : 'NO'}`, 8, dy + 18);
+    ctx.fillText('=== GAMEPAD DEBUG ===', 8, ly); ly += 18;
+    ctx.fillStyle = navigator.getGamepads ? '#88ff88' : '#ff4444';
+    ctx.fillText(`API: ${navigator.getGamepads ? 'supported' : 'NOT SUPPORTED'}`, 8, ly); ly += 16;
+    ctx.fillStyle = '#88ccff';
+    ctx.fillText(`Pads: entries=${gps.length} non-null=${count} found=${gp ? 'YES' : 'NO'}`, 8, ly); ly += 16;
     if (gp) {
       ctx.fillStyle = '#88ff88';
-      const name = gp.id.length > 50 ? gp.id.slice(0, 50) + '...' : gp.id;
-      ctx.fillText(name, 8, dy + 34);
+      const name = gp.id.length > 55 ? gp.id.slice(0, 55) : gp.id;
+      ctx.fillText(`id: ${name}`, 8, ly); ly += 16;
       ctx.fillStyle = '#88ccff';
-      const axesTxt = gp.axes.slice(0, 4).map(a => a.toFixed(2)).join(' ');
-      ctx.fillText(`Axes: ${axesTxt}`, 8, dy + 50);
+      ctx.fillText(`map=${gp.mapping} connected=${gp.connected}`, 8, ly); ly += 16;
+      const ax = gp.axes.slice(0, 4).map(a => a.toFixed(2)).join(' ');
+      ctx.fillText(`axes: ${ax}`, 8, ly); ly += 16;
       const pressed = [];
       for (let i = 0; i < gp.buttons.length; i++) {
         if (gp.buttons[i] && gp.buttons[i].pressed) pressed.push(i);
       }
       ctx.fillStyle = pressed.length > 0 ? '#ffaa44' : '#666';
-      ctx.fillText(`Buttons pressed: [${pressed.join(',') || 'none'}]`, 8, dy + 66);
-      ctx.fillStyle = '#ccc';
-      ctx.fillText(`mapping: ${gp.mapping || 'none'}`, 8, dy + 82);
+      ctx.fillText(`btn pressed: [${pressed.join(',') || 'none'}]`, 8, ly); ly += 16;
     } else {
       ctx.fillStyle = '#ff8866';
-      ctx.fillText('No gamepad detected', 8, dy + 34);
+      ctx.fillText('No active gamepad. Press a button on controller.', 8, ly); ly += 16;
       ctx.fillStyle = '#aaa';
-      ctx.fillText('Press any button on the controller to activate it.', 8, dy + 50);
-      ctx.fillText('(Chrome requires a button press before exposing the pad)', 8, dy + 66);
+      ctx.fillText('On Chrome: page must have focus (click first)', 8, ly); ly += 16;
+      ctx.fillText('On Safari iOS: only Xbox Series X/S or MFi work', 8, ly); ly += 16;
     }
-    ctx.textAlign = 'left';
+    // Log
+    ctx.fillStyle = '#444';
+    ctx.fillText('--- events ---', 8, ly); ly += 14;
+    ctx.font = '11px monospace';
+    const log = this.input.gamepadLog || [];
+    for (let i = 0; i < Math.min(log.length, 5); i++) {
+      ctx.fillStyle = i === 0 ? '#ffaa88' : '#888';
+      ctx.fillText(log[i], 8, ly); ly += 13;
+    }
   }
 
   render() {

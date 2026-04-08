@@ -23,16 +23,28 @@ export class InputHandler {
     this.gamepadActive = false;
     this.gamepadName = '';
 
+    this.gamepadLog = [];
+    const log = (msg) => {
+      const t = new Date().toTimeString().slice(0, 8);
+      this.gamepadLog.unshift(`${t} ${msg}`);
+      if (this.gamepadLog.length > 6) this.gamepadLog.pop();
+      console.log('[gamepad]', msg);
+    };
+    this.gamepadLogger = log;
+    log('API ' + (navigator.getGamepads ? 'supported' : 'NOT SUPPORTED'));
+    log('userAgent: ' + navigator.userAgent.slice(0, 60));
+
     window.addEventListener('gamepadconnected', (e) => {
       this.gamepadConnected = true;
       this.gamepadName = e.gamepad ? e.gamepad.id : 'Gamepad';
-      console.log('Gamepad connected:', this.gamepadName, 'buttons:', e.gamepad.buttons.length, 'axes:', e.gamepad.axes.length);
+      log('CONNECTED: ' + this.gamepadName.slice(0, 40));
+      log(`buttons=${e.gamepad.buttons.length} axes=${e.gamepad.axes.length} map=${e.gamepad.mapping}`);
     });
-    window.addEventListener('gamepaddisconnected', () => {
+    window.addEventListener('gamepaddisconnected', (e) => {
       this.gamepadConnected = false;
       this.gamepadAxes.x = 0; this.gamepadAxes.y = 0;
       this.gamepadFire = false; this.gamepadPunch = false;
-      console.log('Gamepad disconnected');
+      log('DISCONNECTED: ' + (e.gamepad ? e.gamepad.id : '?'));
     });
 
     // Poll gamepad independently in RAF loop (in case game isn't updating every frame)
