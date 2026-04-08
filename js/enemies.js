@@ -104,11 +104,22 @@ export class EnemySystem {
       const t = Date.now() / 200;
       const bob = Math.sin(t + e.x * 0.01) * 1.5;
 
-      // Shadow
+      // Directional shadow
+      ctx.save();
+      ctx.translate(s.x, s.y + r + 1);
+      ctx.transform(1, 0, -0.4, 0.3, 0, 0);
       ctx.fillStyle = 'rgba(0,0,0,0.4)';
       ctx.beginPath();
-      ctx.ellipse(s.x, s.y + r + 1, r * 0.7, r * 0.2, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, -r * 1.8, r * 0.7, r * 0.25, 0, 0, Math.PI * 2);
       ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.6, 0);
+      ctx.lineTo(r * 0.6, 0);
+      ctx.lineTo(r * 0.5, -r * 1.8);
+      ctx.lineTo(-r * 0.5, -r * 1.8);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
 
       // Glow aura
       const aura = ctx.createRadialGradient(s.x, s.y + bob, r, s.x, s.y + bob, r * 1.6);

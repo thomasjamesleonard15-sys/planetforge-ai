@@ -98,11 +98,22 @@ export class SoldierSystem {
       if (!camera.isVisible(s.x, s.y)) continue;
       const sc = camera.worldToScreen(s.x, s.y);
 
-      // Shadow
-      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      // Directional shadow
+      ctx.save();
+      ctx.translate(sc.x, sc.y + 12);
+      ctx.transform(1, 0, -0.4, 0.3, 0, 0);
+      ctx.fillStyle = 'rgba(0,0,0,0.45)';
       ctx.beginPath();
-      ctx.ellipse(sc.x, sc.y + 12, 8, 2, 0, 0, Math.PI * 2);
+      ctx.moveTo(-7, 0);
+      ctx.lineTo(7, 0);
+      ctx.lineTo(5, -22);
+      ctx.lineTo(-5, -22);
+      ctx.closePath();
       ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(0, -22, 5, 1.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
 
       // Body with shading
       ctx.beginPath();

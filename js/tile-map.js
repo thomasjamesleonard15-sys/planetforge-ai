@@ -143,34 +143,50 @@ export class TileMap {
         if (data) this.renderCrop(ctx, sx, sy, data);
         break;
       case TILE.TURRET:
-        ctx.fillStyle = COLORS.dirt;
-        ctx.fillRect(sx, sy, ts, ts);
+        // Shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(sx + 7, sy + 7, ts - 8, ts - 8);
         ctx.fillStyle = COLORS.turret;
         ctx.fillRect(sx + 4, sy + 4, ts - 8, ts - 8);
+        // Highlight
+        ctx.fillStyle = '#6a8aaa';
+        ctx.fillRect(sx + 4, sy + 4, ts - 8, 4);
         ctx.fillStyle = '#88aacc';
         ctx.fillRect(sx + ts / 2 - 3, sy + 2, 6, ts / 2);
         break;
       case TILE.WALL:
+        // Shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(sx + 3, sy + 3, ts, ts);
         ctx.fillStyle = COLORS.wall;
         ctx.fillRect(sx, sy, ts, ts);
-        ctx.strokeStyle = '#8a8a9a';
+        ctx.fillStyle = '#8a8a9a';
+        ctx.fillRect(sx, sy, ts, 4);
+        ctx.strokeStyle = '#4a4a5a';
         ctx.strokeRect(sx + 2, sy + 2, ts - 4, ts - 4);
         break;
       case TILE.BARRACKS:
-        ctx.fillStyle = COLORS.dirt;
-        ctx.fillRect(sx, sy, ts, ts);
+        // Shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        ctx.fillRect(sx + 6, sy + 6, ts - 6, ts - 6);
         ctx.fillStyle = COLORS.barracks;
         ctx.fillRect(sx + 3, sy + 3, ts - 6, ts - 6);
+        // Roof highlight
+        ctx.fillStyle = '#aa8866';
+        ctx.fillRect(sx + 3, sy + 3, ts - 6, 5);
         ctx.fillStyle = '#aa7755';
         ctx.fillRect(sx + ts / 2 - 4, sy + ts - 10, 8, 8);
         break;
       case TILE.SOLAR:
-        ctx.fillStyle = COLORS.dirt;
-        ctx.fillRect(sx, sy, ts, ts);
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(sx + 9, sy + 9, ts - 12, ts - 12);
         ctx.fillStyle = COLORS.solar;
         ctx.fillRect(sx + 6, sy + 6, ts - 12, ts - 12);
         ctx.fillStyle = '#5588cc';
         ctx.fillRect(sx + 10, sy + 10, ts - 20, ts - 20);
+        // Glint
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        ctx.fillRect(sx + 12, sy + 12, 4, 4);
         break;
       case TILE.BED:
         ctx.fillStyle = COLORS.dirt;
