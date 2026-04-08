@@ -95,6 +95,15 @@ export class EnemySystem {
     }
   }
 
+  darkenColor(hex, amt) {
+    if (!hex || hex[0] !== '#') return '#444';
+    const h = hex.replace('#', '');
+    const r = parseInt(h.slice(0, 2), 16) * (1 - amt) | 0;
+    const g = parseInt(h.slice(2, 4), 16) * (1 - amt) | 0;
+    const b = parseInt(h.slice(4, 6), 16) * (1 - amt) | 0;
+    return `rgb(${r},${g},${b})`;
+  }
+
   render(ctx, camera) {
     for (const e of this.pool) {
       if (!e.active) continue;
@@ -166,12 +175,79 @@ export class EnemySystem {
       ctx.arc(s.x + r * 0.3, s.y - r * 0.2 + bob, r * 0.1, 0, Math.PI * 2);
       ctx.fill();
 
-      // Mouth
-      ctx.strokeStyle = 'rgba(0,0,0,0.7)';
-      ctx.lineWidth = 1.5;
+      // Mouth with teeth
+      ctx.fillStyle = 'rgba(0,0,0,0.8)';
       ctx.beginPath();
       ctx.arc(s.x, s.y + r * 0.2 + bob, r * 0.3, 0.3, Math.PI - 0.3);
-      ctx.stroke();
+      ctx.lineTo(s.x - r * 0.25, s.y + r * 0.2 + bob);
+      ctx.closePath();
+      ctx.fill();
+      // Teeth
+      ctx.fillStyle = '#ffeecc';
+      for (let i = 0; i < 3; i++) {
+        const tx = s.x - r * 0.2 + i * r * 0.2;
+        ctx.beginPath();
+        ctx.moveTo(tx - r * 0.05, s.y + r * 0.2 + bob);
+        ctx.lineTo(tx + r * 0.05, s.y + r * 0.2 + bob);
+        ctx.lineTo(tx, s.y + r * 0.35 + bob);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // Type-specific details
+      if (e.type === 1) {
+        // Brute — horns on top
+        ctx.fillStyle = this.darkenColor(e.color, 0.5);
+        ctx.beginPath();
+        ctx.moveTo(s.x - r * 0.5, s.y - r * 0.85 + bob);
+        ctx.lineTo(s.x - r * 0.7, s.y - r * 1.3 + bob);
+        ctx.lineTo(s.x - r * 0.35, s.y - r * 0.95 + bob);
+        ctx.closePath();
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(s.x + r * 0.5, s.y - r * 0.85 + bob);
+        ctx.lineTo(s.x + r * 0.7, s.y - r * 1.3 + bob);
+        ctx.lineTo(s.x + r * 0.35, s.y - r * 0.95 + bob);
+        ctx.closePath();
+        ctx.fill();
+      } else if (e.type === 2) {
+        // Swarm — antennae wiggling
+        ctx.strokeStyle = e.color;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(s.x - 3, s.y - r + bob);
+        ctx.quadraticCurveTo(s.x - 6 + Math.sin(t * 3) * 2, s.y - r - 4 + bob, s.x - 4, s.y - r - 8 + bob);
+        ctx.moveTo(s.x + 3, s.y - r + bob);
+        ctx.quadraticCurveTo(s.x + 6 - Math.sin(t * 3) * 2, s.y - r - 4 + bob, s.x + 4, s.y - r - 8 + bob);
+        ctx.stroke();
+        ctx.fillStyle = '#ffff44';
+        ctx.beginPath();
+        ctx.arc(s.x - 4, s.y - r - 8 + bob, 1.5, 0, Math.PI * 2);
+        ctx.arc(s.x + 4, s.y - r - 8 + bob, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (e.type === 3) {
+        // Tank — heavy armor plates
+        ctx.fillStyle = this.darkenColor(e.color, 0.3);
+        ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+        ctx.lineWidth = 1.5;
+        for (let i = 0; i < 4; i++) {
+          const pa = i * Math.PI / 2 + Math.PI / 4;
+          const px = s.x + Math.cos(pa) * r * 0.6;
+          const py = s.y + bob + Math.sin(pa) * r * 0.6;
+          ctx.beginPath();
+          ctx.arc(px, py, r * 0.25, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+        // Bolts
+        ctx.fillStyle = '#888';
+        for (let i = 0; i < 4; i++) {
+          const pa = i * Math.PI / 2 + Math.PI / 4;
+          ctx.beginPath();
+          ctx.arc(s.x + Math.cos(pa) * r * 0.6, s.y + bob + Math.sin(pa) * r * 0.6, 1.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
 
       // Health bar with backdrop
       if (e.health < e.maxHealth) {

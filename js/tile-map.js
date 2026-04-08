@@ -142,52 +142,165 @@ export class TileMap {
         ctx.fillRect(sx, sy, ts, ts);
         if (data) this.renderCrop(ctx, sx, sy, data);
         break;
-      case TILE.TURRET:
+      case TILE.TURRET: {
         // Shadow
         ctx.fillStyle = 'rgba(0,0,0,0.5)';
         ctx.fillRect(sx + 7, sy + 7, ts - 8, ts - 8);
-        ctx.fillStyle = COLORS.turret;
+        // Base
+        const tbg = ctx.createLinearGradient(sx, sy, sx, sy + ts);
+        tbg.addColorStop(0, '#6a8aaa');
+        tbg.addColorStop(0.5, COLORS.turret);
+        tbg.addColorStop(1, '#2a4a6a');
+        ctx.fillStyle = tbg;
         ctx.fillRect(sx + 4, sy + 4, ts - 8, ts - 8);
-        // Highlight
-        ctx.fillStyle = '#6a8aaa';
-        ctx.fillRect(sx + 4, sy + 4, ts - 8, 4);
-        ctx.fillStyle = '#88aacc';
-        ctx.fillRect(sx + ts / 2 - 3, sy + 2, 6, ts / 2);
+        ctx.strokeStyle = '#1a2a4a';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(sx + 4, sy + 4, ts - 8, ts - 8);
+        // Turret head (round dome)
+        const tcx = sx + ts / 2, tcy = sy + ts / 2;
+        ctx.beginPath();
+        ctx.arc(tcx, tcy, ts * 0.25, 0, Math.PI * 2);
+        const tdg = ctx.createRadialGradient(tcx - 3, tcy - 3, 1, tcx, tcy, ts * 0.25);
+        tdg.addColorStop(0, '#aaccff');
+        tdg.addColorStop(0.5, '#6688cc');
+        tdg.addColorStop(1, '#223366');
+        ctx.fillStyle = tdg;
+        ctx.fill();
+        ctx.strokeStyle = '#112244';
+        ctx.stroke();
+        // Barrel pointing up (rotating over time for effect)
+        const tt = Date.now() / 1000;
+        const ta = (tt + sx * 0.01) * 0.3;
+        ctx.save();
+        ctx.translate(tcx, tcy);
+        ctx.rotate(ta);
+        ctx.fillStyle = '#334';
+        ctx.fillRect(-2, -ts * 0.35, 4, ts * 0.25);
+        ctx.fillStyle = '#556';
+        ctx.fillRect(-2, -ts * 0.35, 1, ts * 0.25);
+        ctx.restore();
+        // Glowing core
+        ctx.fillStyle = '#88ffff';
+        ctx.beginPath();
+        ctx.arc(tcx, tcy, 2, 0, Math.PI * 2);
+        ctx.fill();
         break;
-      case TILE.WALL:
+      }
+      case TILE.WALL: {
         // Shadow
         ctx.fillStyle = 'rgba(0,0,0,0.5)';
         ctx.fillRect(sx + 3, sy + 3, ts, ts);
-        ctx.fillStyle = COLORS.wall;
+        // Body with gradient
+        const wbg = ctx.createLinearGradient(sx, sy, sx, sy + ts);
+        wbg.addColorStop(0, '#9a9aaa');
+        wbg.addColorStop(0.5, COLORS.wall);
+        wbg.addColorStop(1, '#3a3a4a');
+        ctx.fillStyle = wbg;
         ctx.fillRect(sx, sy, ts, ts);
+        // Battlements (crenelations on top)
+        ctx.fillStyle = '#5a5a6a';
+        ctx.fillRect(sx, sy, ts, 6);
         ctx.fillStyle = '#8a8a9a';
-        ctx.fillRect(sx, sy, ts, 4);
-        ctx.strokeStyle = '#4a4a5a';
-        ctx.strokeRect(sx + 2, sy + 2, ts - 4, ts - 4);
+        for (let i = 0; i < 3; i++) {
+          ctx.fillRect(sx + i * 16 + 2, sy - 2, 12, 6);
+        }
+        // Stone blocks
+        ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(sx + 2, sy + 8, ts - 4, ts - 10);
+        ctx.beginPath();
+        ctx.moveTo(sx + ts / 2, sy + 8);
+        ctx.lineTo(sx + ts / 2, sy + ts - 2);
+        ctx.moveTo(sx + 2, sy + 18);
+        ctx.lineTo(sx + ts - 2, sy + 18);
+        ctx.moveTo(sx + 2, sy + 32);
+        ctx.lineTo(sx + ts - 2, sy + 32);
+        ctx.stroke();
         break;
-      case TILE.BARRACKS:
-        // Shadow
+      }
+      case TILE.BARRACKS: {
         ctx.fillStyle = 'rgba(0,0,0,0.55)';
         ctx.fillRect(sx + 6, sy + 6, ts - 6, ts - 6);
-        ctx.fillStyle = COLORS.barracks;
+        // Wall
+        const bbg = ctx.createLinearGradient(sx, sy, sx, sy + ts);
+        bbg.addColorStop(0, '#8a5540');
+        bbg.addColorStop(0.5, COLORS.barracks);
+        bbg.addColorStop(1, '#3a2010');
+        ctx.fillStyle = bbg;
         ctx.fillRect(sx + 3, sy + 3, ts - 6, ts - 6);
-        // Roof highlight
-        ctx.fillStyle = '#aa8866';
-        ctx.fillRect(sx + 3, sy + 3, ts - 6, 5);
-        ctx.fillStyle = '#aa7755';
-        ctx.fillRect(sx + ts / 2 - 4, sy + ts - 10, 8, 8);
+        ctx.strokeStyle = '#2a1808';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(sx + 3, sy + 3, ts - 6, ts - 6);
+        // Roof triangle
+        ctx.fillStyle = '#6a3820';
+        ctx.beginPath();
+        ctx.moveTo(sx + 3, sy + 12);
+        ctx.lineTo(sx + ts / 2, sy + 2);
+        ctx.lineTo(sx + ts - 3, sy + 12);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#2a1808';
+        ctx.stroke();
+        // Windows
+        ctx.fillStyle = '#ffdd66';
+        ctx.fillRect(sx + 8, sy + 16, 8, 8);
+        ctx.fillRect(sx + ts - 16, sy + 16, 8, 8);
+        ctx.strokeStyle = '#442200';
+        ctx.strokeRect(sx + 8, sy + 16, 8, 8);
+        ctx.strokeRect(sx + ts - 16, sy + 16, 8, 8);
+        ctx.beginPath();
+        ctx.moveTo(sx + 12, sy + 16);
+        ctx.lineTo(sx + 12, sy + 24);
+        ctx.moveTo(sx + 8, sy + 20);
+        ctx.lineTo(sx + 16, sy + 20);
+        ctx.moveTo(sx + ts - 12, sy + 16);
+        ctx.lineTo(sx + ts - 12, sy + 24);
+        ctx.moveTo(sx + ts - 16, sy + 20);
+        ctx.lineTo(sx + ts - 8, sy + 20);
+        ctx.stroke();
+        // Door
+        ctx.fillStyle = '#3a2010';
+        ctx.fillRect(sx + ts / 2 - 5, sy + ts - 14, 10, 12);
+        ctx.strokeStyle = '#1a0800';
+        ctx.strokeRect(sx + ts / 2 - 5, sy + ts - 14, 10, 12);
+        // Doorknob
+        ctx.fillStyle = '#ffaa44';
+        ctx.beginPath();
+        ctx.arc(sx + ts / 2 + 3, sy + ts - 7, 1, 0, Math.PI * 2);
+        ctx.fill();
         break;
-      case TILE.SOLAR:
+      }
+      case TILE.SOLAR: {
         ctx.fillStyle = 'rgba(0,0,0,0.5)';
         ctx.fillRect(sx + 9, sy + 9, ts - 12, ts - 12);
-        ctx.fillStyle = COLORS.solar;
+        // Frame
+        ctx.fillStyle = '#555';
         ctx.fillRect(sx + 6, sy + 6, ts - 12, ts - 12);
-        ctx.fillStyle = '#5588cc';
-        ctx.fillRect(sx + 10, sy + 10, ts - 20, ts - 20);
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(sx + 6, sy + 6, ts - 12, ts - 12);
+        // 4 solar cells
+        for (let cy2 = 0; cy2 < 2; cy2++) {
+          for (let cx2 = 0; cx2 < 2; cx2++) {
+            const cellX = sx + 9 + cx2 * (ts / 2 - 7);
+            const cellY = sy + 9 + cy2 * (ts / 2 - 7);
+            const cellW = (ts - 18) / 2;
+            const cg = ctx.createLinearGradient(cellX, cellY, cellX + cellW, cellY + cellW);
+            cg.addColorStop(0, '#88ccff');
+            cg.addColorStop(0.4, '#3366bb');
+            cg.addColorStop(1, '#112244');
+            ctx.fillStyle = cg;
+            ctx.fillRect(cellX, cellY, cellW, cellW);
+            ctx.strokeStyle = '#112244';
+            ctx.strokeRect(cellX, cellY, cellW, cellW);
+          }
+        }
         // Glint
-        ctx.fillStyle = 'rgba(255,255,255,0.3)';
-        ctx.fillRect(sx + 12, sy + 12, 4, 4);
+        ctx.fillStyle = 'rgba(255,255,255,0.35)';
+        ctx.fillRect(sx + 10, sy + 10, 6, 2);
+        ctx.fillRect(sx + ts - 22, sy + ts / 2 + 2, 6, 2);
         break;
+      }
       case TILE.BED:
         ctx.fillStyle = COLORS.dirt;
         ctx.fillRect(sx, sy, ts, ts);
