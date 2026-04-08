@@ -1,6 +1,7 @@
 import { WEAPONS } from './constants.js';
 import { Planet } from './planet.js';
 import { renderSpaceWorld, renderShip, renderSpaceHUD } from './space-renderer.js';
+import { renderSpaceFPS } from './space-fps-renderer.js';
 import { createAsteroidPool, createBulletPool, createParticlePool, spawnAsteroid, spawnChildAsteroid, emitParticles } from './space-pools.js';
 import { SpaceAliens } from './space-aliens.js';
 import { ShipUpgrades } from './ship-upgrades.js';
@@ -37,6 +38,8 @@ export class SpaceView {
     this.blackHoleCheck = 0;
     this.blackHoleEvent = false;
     this.totalSpaceTime = 0;
+    this.fpsMode = false;
+    this.fpsBtnRect = { x: 0, y: 0, w: 0, h: 0 };
     this.eva = false;
     this.evaX = 0; this.evaY = 0;
     this.evaVX = 0; this.evaVY = 0;
@@ -134,6 +137,12 @@ export class SpaceView {
       const bbx = this.screenW / 2 - 80;
       if (sx >= bbx && sx <= bbx + 160 && sy >= bby && sy <= bby + 44) { this.boardAlien(); return; }
     }
+    // FPS toggle button
+    const fb = this.fpsBtnRect;
+    if (fb.w > 0 && sx >= fb.x && sx <= fb.x + fb.w && sy >= fb.y && sy <= fb.y + fb.h) {
+      this.fpsMode = !this.fpsMode;
+      return;
+    }
     // EVA button
     const eb = this.evaBtnRect;
     if (eb.w > 0 && sx >= eb.x && sx <= eb.x + eb.w && sy >= eb.y && sy <= eb.y + eb.h) {
@@ -168,6 +177,11 @@ export class SpaceView {
 
   handleTouchEnd() { this.joystickActive = false; this.joyX = 0; this.joyY = 0; }
 
+  fpsLook(dx, dy) {
+    if (!this.fpsMode) return;
+    this.shipAngle += dx * 0.005;
+  }
+
   boardAlien() {
     const a = this.aliens.pool[this.boardTarget];
     if (!a || !a.active) return;
@@ -191,7 +205,7 @@ export class SpaceView {
 
   shoot(sx, sy) {
     if (this.fireCooldown > 0) return;
-    const angle = Math.atan2(sy - this.shipY, sx - this.shipX);
+    const angle = this.fpsMode ? this.shipAngle : Math.atan2(sy - this.shipY, sx - this.shipX);
     const w = this.weapon;
     const pellets = w.pellets || 1;
     for (let i = 0; i < pellets; i++) {
@@ -216,6 +230,28 @@ export class SpaceView {
 
     if (this.eva) {
       this.updateEVA(dt, mx, my, len);
+    } else if (this.fpsMode) {
+      // FPS ship: joystick X = turn, joystick Y = thrust
+      this.shipAngle += mx * 2 * dt;
+      const speed = SHIP_SPEED * this.upgrades.getSpeedMultiplier();
+      if (this.fuel <= 0) {
+        this.shipThrust = false;
+        this.outOfFuel = true;
+      } else if (my < -0.1) {
+        // Forward thrust along ship angle
+        this.shipVX += Math.cos(this.shipAngle) * speed * (-my) * dt;
+        this.shipVY += Math.sin(this.shipAngle) * speed * (-my) * dt;
+        this.shipThrust = true;
+        this.fuel -= dt * 0.8;
+        if (this.fuel < 0) this.fuel = 0;
+      } else if (my > 0.1) {
+        // Reverse thrust
+        this.shipVX -= Math.cos(this.shipAngle) * speed * 0.4 * my * dt;
+        this.shipVY -= Math.sin(this.shipAngle) * speed * 0.4 * my * dt;
+        this.shipThrust = true;
+        this.fuel -= dt * 0.5;
+        if (this.fuel < 0) this.fuel = 0;
+      } else { this.shipThrust = false; }
     } else {
       const speed = SHIP_SPEED * this.upgrades.getSpeedMultiplier();
       if (this.fuel <= 0) {
@@ -472,8 +508,29 @@ export class SpaceView {
   }
 
   render(ctx) {
-    renderSpaceWorld(ctx, this);
-    renderShip(ctx, this);
+    if (this.fpsMode) {
+      renderSpaceFPS(ctx, this);
+    } else {
+      renderSpaceWorld(ctx, this);
+      renderShip(ctx, this);
+    }
     renderSpaceHUD(ctx, this);
+
+    // FPS toggle button (top-right area, below back/mute)
+    const fbW = 80, fbH = 36;
+    const fbX = this.screenW - fbW - 16, fbY = 60;
+    this.fpsBtnRect = { x: fbX, y: fbY, w: fbW, h: fbH };
+    ctx.fillStyle = this.fpsMode ? 'rgba(60, 100, 60, 0.9)' : 'rgba(20, 20, 40, 0.85)';
+    ctx.beginPath();
+    ctx.roundRect(fbX, fbY, fbW, fbH, 8);
+    ctx.fill();
+    ctx.strokeStyle = this.fpsMode ? '#88ff88' : 'rgba(100, 120, 255, 0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.font = '13px -apple-system, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = this.fpsMode ? '#ccffcc' : '#aab';
+    ctx.fillText('🚀 FPS', fbX + fbW / 2, fbY + fbH / 2 + 5);
+    ctx.textAlign = 'left';
   }
 }

@@ -68,6 +68,8 @@ export class Game {
     this.input.onActionDrag = (dx, dy) => {
       if (this.state === STATE.SURFACE && this.surface && this.surface.fpsMode) {
         this.surface.fpsLook(dx, dy);
+      } else if (this.state === STATE.SPACE && this.space && this.space.fpsMode) {
+        this.space.fpsLook(dx, dy);
       }
     };
     this.input.onKey = (key) => {
