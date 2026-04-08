@@ -7,6 +7,9 @@ export class InputHandler {
     this.onDragEnd = null;
     this.onSecondTap = null;
     this.onKey = null;
+    this.onActionDrag = null;
+    this.actionLastX = 0;
+    this.actionLastY = 0;
     this.keys = new Set();
     this.joystickTouchId = null;
     this.actionTouchId = null;
@@ -58,6 +61,8 @@ export class InputHandler {
         if (this.onTap) this.onTap(pos.x, pos.y);
       } else if (this.actionTouchId === null) {
         this.actionTouchId = t.identifier;
+        this.actionLastX = pos.x;
+        this.actionLastY = pos.y;
         if (this.onTap) this.onTap(pos.x, pos.y);
         if (this.onSecondTap) this.onSecondTap(pos.x, pos.y);
       } else {
@@ -72,6 +77,13 @@ export class InputHandler {
       if (t.identifier === this.joystickTouchId) {
         const pos = this.getPos(t.clientX, t.clientY);
         if (this.onDrag) this.onDrag(pos.x, pos.y);
+      } else if (t.identifier === this.actionTouchId) {
+        const pos = this.getPos(t.clientX, t.clientY);
+        const dx = pos.x - this.actionLastX;
+        const dy = pos.y - this.actionLastY;
+        this.actionLastX = pos.x;
+        this.actionLastY = pos.y;
+        if (this.onActionDrag) this.onActionDrag(dx, dy);
       }
     }
   }

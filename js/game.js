@@ -65,6 +65,11 @@ export class Game {
     this.input.onDragStart = (_x, _y) => {};
     this.input.onDrag = (x, y) => this.handleDrag(x, y);
     this.input.onDragEnd = () => this.handleDragEnd();
+    this.input.onActionDrag = (dx, dy) => {
+      if (this.state === STATE.SURFACE && this.surface && this.surface.fpsMode) {
+        this.surface.fpsLook(dx, dy);
+      }
+    };
     this.input.onKey = (key) => {
       if (this.state === STATE.STORY && this.story) { this.story.handleKey(key); return; }
       if (this.multiplayerActive && this.chat.handleKey(key)) return;

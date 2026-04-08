@@ -214,6 +214,12 @@ export class SurfaceView {
     this.hud.joystickY = 0;
   }
 
+  fpsLook(dx, dy) {
+    if (!this.fpsMode) return;
+    this.player.fpsAngle += dx * 0.005;
+    this.fpsManualLook = 0.5;
+  }
+
   handleAction(sx, sy) {
     const world = this.camera.screenToWorld(sx, sy);
     const tx = (world.x / TILE_SIZE) | 0;
@@ -296,8 +302,13 @@ export class SurfaceView {
 
   tryShoot(sx, sy) {
     if (!this.player.canFire()) return;
-    const world = this.camera.screenToWorld(sx, sy);
-    const angle = Math.atan2(world.y - this.player.y, world.x - this.player.x);
+    let angle;
+    if (this.fpsMode) {
+      angle = this.player.fpsAngle;
+    } else {
+      const world = this.camera.screenToWorld(sx, sy);
+      angle = Math.atan2(world.y - this.player.y, world.x - this.player.x);
+    }
     this.projectiles.fire(this.player.x, this.player.y, angle, this.player.weapon, true);
     this.player.fire();
     this.particles.emit(this.player.x, this.player.y, 3, {
@@ -309,21 +320,14 @@ export class SurfaceView {
     if (this.gameOver) return;
 
     if (this.fpsMode) {
-      // FPS mode — joystick Y = forward/back, joystick X = strafe; rotate with right tap drag
+      // FPS mode — joystick Y = forward/back, joystick X = strafe
+      if (this.fpsManualLook > 0) this.fpsManualLook -= dt;
       const fwd = -this.hud.joystickY;
       const strafe = this.hud.joystickX;
       const cos = Math.cos(this.player.fpsAngle), sin = Math.sin(this.player.fpsAngle);
       const moveX = cos * fwd - sin * strafe;
       const moveY = sin * fwd + cos * strafe;
       this.player.update(dt, moveX, moveY);
-      // Auto-rotate to movement direction if no turn input
-      if (Math.abs(fwd) > 0.1 || Math.abs(strafe) > 0.1) {
-        const targetAngle = Math.atan2(moveY, moveX);
-        let da = targetAngle - this.player.fpsAngle;
-        while (da > Math.PI) da -= Math.PI * 2;
-        while (da < -Math.PI) da += Math.PI * 2;
-        this.player.fpsAngle += da * 4 * dt;
-      }
     } else {
       this.player.update(dt, this.hud.joystickX, this.hud.joystickY);
     }
