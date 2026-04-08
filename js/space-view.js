@@ -479,12 +479,29 @@ export class SpaceView {
     for (const a of this.asteroids) {
       if (!a.active) continue;
       const dx = this.shipX - a.x, dy = this.shipY - a.y;
-      if (dx * dx + dy * dy < (this.shipRadius + a.r) ** 2) {
-        this.shipHealth -= 15; a.active = false;
-        emitParticles(this.particles, a.x, a.y, 10, 0, 0.4, '#ff4444', 120, 3);
+      const minDist = this.shipRadius + a.r;
+      const distSq = dx * dx + dy * dy;
+      if (distSq < minDist * minDist && distSq > 1) {
+        const dist = Math.sqrt(distSq);
         const pa = Math.atan2(dy, dx);
-        this.shipVX += Math.cos(pa) * 150; this.shipVY += Math.sin(pa) * 150;
-        if (this.shipHealth <= 0) { this.shipHealth = 0; this.gameOver = true; }
+        const overlap = minDist - dist;
+        // Push ship out of asteroid
+        this.shipX += Math.cos(pa) * overlap;
+        this.shipY += Math.sin(pa) * overlap;
+        // Bounce ship velocity off asteroid
+        const nvx = Math.cos(pa), nvy = Math.sin(pa);
+        const dot = this.shipVX * nvx + this.shipVY * nvy;
+        if (dot < 0) {
+          this.shipVX -= 1.8 * dot * nvx;
+          this.shipVY -= 1.8 * dot * nvy;
+        }
+        // Small impact damage
+        const impactSpeed = Math.abs(dot);
+        if (impactSpeed > 30) {
+          this.shipHealth -= Math.min(15, impactSpeed * 0.05);
+          emitParticles(this.particles, this.shipX - nvx * this.shipRadius, this.shipY - nvy * this.shipRadius, 6, 0, 0.3, '#ffaa44', 100, 3);
+          if (this.shipHealth <= 0) { this.shipHealth = 0; this.gameOver = true; }
+        }
       }
     }
     // Player bullets vs aliens
