@@ -96,13 +96,19 @@ export class TileMap {
         else { bg.addColorStop(0, '#3e5020'); bg.addColorStop(1, '#1a2608'); }
         ctx.fillStyle = bg;
         ctx.fillRect(sx, sy, ts, ts);
-        // Grass blades
+        // Animated grass blades swaying in the wind
+        const wind = Math.sin(Date.now() / 500 + sx * 0.01 + sy * 0.01) * 1.2;
         for (let i = 0; i < 5; i++) {
           const gx = sx + ((seed * 11 + i * 17) % ts);
           const gy = sy + ((seed * 7 + i * 13) % ts);
           ctx.fillStyle = i % 2 === 0 ? '#4a6028' : '#557030';
-          ctx.fillRect(gx, gy, 2, 3);
-          ctx.fillRect(gx + 1, gy - 1, 1, 2);
+          ctx.beginPath();
+          ctx.moveTo(gx, gy + 3);
+          ctx.lineTo(gx + wind, gy);
+          ctx.lineTo(gx + wind + 1, gy);
+          ctx.lineTo(gx + 2, gy + 3);
+          ctx.closePath();
+          ctx.fill();
         }
         // Occasional decoration
         if (seed === 3) {

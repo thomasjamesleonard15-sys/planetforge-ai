@@ -62,6 +62,16 @@ export class SurfaceView {
       });
     }
     this.grainSeed = 0;
+    // Rain drops
+    this.rainDrops = [];
+    for (let i = 0; i < 120; i++) {
+      this.rainDrops.push({
+        x: Math.random() * 2000, y: Math.random() * 2000,
+        len: 8 + Math.random() * 6, speed: 400 + Math.random() * 200,
+      });
+    }
+    // Grass sway phase
+    this.windPhase = 0;
   }
 
   resize(w, h) {
@@ -384,6 +394,18 @@ export class SurfaceView {
     this.lastPlayerHealth = this.player.health;
     if (this.screenShake > 0) this.screenShake = Math.max(0, this.screenShake - dt * 20);
 
+    // Wind/grass sway
+    this.windPhase += dt * 2;
+
+    // Rain
+    for (const d of this.rainDrops) {
+      d.x += 80 * dt;
+      d.y += d.speed * dt;
+      const sp = this.camera.worldToScreen(d.x, d.y);
+      if (sp.y > this.screenH + 10) d.y -= this.screenH + 30;
+      if (sp.x > this.screenW + 10) d.x -= this.screenW + 30;
+    }
+
     // Ambient particles drift
     for (const p of this.ambientParticles) {
       p.x += p.vx * dt + Math.sin(p.phase) * 5 * dt;
@@ -547,9 +569,36 @@ export class SurfaceView {
       this.player.render(ctx, this.camera);
       this.soldiers.render(ctx, this.camera);
       if (this.enemies) this.enemies.render(ctx, this.camera);
+      // Dynamic lights under bullets (additive glow on the ground)
+      ctx.globalCompositeOperation = 'lighter';
+      for (const p of this.projectiles.pool) {
+        if (!p.active) continue;
+        const sp = this.camera.worldToScreen(p.x, p.y);
+        const lightG = ctx.createRadialGradient(sp.x, sp.y, 0, sp.x, sp.y, 40);
+        lightG.addColorStop(0, `${p.color}44`);
+        lightG.addColorStop(1, 'transparent');
+        ctx.fillStyle = lightG;
+        ctx.beginPath();
+        ctx.arc(sp.x, sp.y, 40, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalCompositeOperation = 'source-over';
+
       this.projectiles.render(ctx, this.camera);
       this.particles.render(ctx, this.camera);
       this.dayNight.render(ctx, this.camera, this.screenW, this.screenH);
+
+      // Rain drops (on top of world, behind HUD)
+      ctx.strokeStyle = 'rgba(180, 200, 255, 0.5)';
+      ctx.lineWidth = 1;
+      for (const d of this.rainDrops) {
+        const sp = this.camera.worldToScreen(d.x, d.y);
+        if (sp.x < -20 || sp.x > this.screenW + 20 || sp.y < -20 || sp.y > this.screenH + 20) continue;
+        ctx.beginPath();
+        ctx.moveTo(sp.x, sp.y);
+        ctx.lineTo(sp.x - 2, sp.y - d.len);
+        ctx.stroke();
+      }
       // Ambient floating particles (pollen/dust)
       for (const p of this.ambientParticles) {
         const sp = this.camera.worldToScreen(p.x, p.y);
