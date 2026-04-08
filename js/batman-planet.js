@@ -58,6 +58,13 @@ export class BatmanPlanet {
     this.bossAnnounceTimer = 0;
     this.finalBoss = false;
     this.soldiers = 0;
+    // Combo system
+    this.combo = 0;
+    this.comboTimer = 0;
+    this.comboFlash = 0;
+    this.hitStop = 0;
+    this.cameraShake = 0;
+    this.cameraZoom = 1.6; // closer zoom for third-person feel
 
     this.enemies = [];
     for (let i = 0; i < MAX_ENEMIES; i++) {
@@ -137,6 +144,49 @@ export class BatmanPlanet {
     });
   }
 
+  tryCombo() {
+    // Freeflow-style melee: find closest enemy in range, dash-punch them
+    const range = 100;
+    let closest = null;
+    let closestDist = range * range;
+    for (const e of this.enemies) {
+      if (!e.active) continue;
+      const dx = e.x - this.player.x, dy = e.y - this.player.y;
+      const dSq = dx * dx + dy * dy;
+      if (dSq < closestDist) { closest = e; closestDist = dSq; }
+    }
+    if (!closest) return;
+    // Dash toward target
+    const dx = closest.x - this.player.x, dy = closest.y - this.player.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const pushDist = Math.max(0, dist - this.player.radius - closest.radius - 2);
+    this.player.x += (dx / dist) * pushDist * 0.85;
+    this.player.y += (dy / dist) * pushDist * 0.85;
+    // Damage with combo scaling
+    const baseDmg = 40;
+    const comboMul = 1 + this.combo * 0.1;
+    closest.health -= baseDmg * comboMul;
+    // Knockback
+    closest.x += (dx / dist) * 12;
+    closest.y += (dy / dist) * 12;
+    // Combo
+    this.combo++;
+    this.comboTimer = 2.5;
+    this.comboFlash = 0.5;
+    this.hitStop = 0.08;
+    this.cameraShake = Math.max(this.cameraShake, 6);
+    this.player.punchAnim = 1;
+    // Particles
+    this.particles.emit(closest.x, closest.y, 12, { color: '#ffdd44', speed: 180, life: 0.4, radius: 3 });
+    this.particles.emit(closest.x, closest.y, 8, { color: '#ffffff', speed: 120, life: 0.3, radius: 2 });
+    if (closest.health <= 0) {
+      closest.active = false;
+      this.kills++;
+      this.score += closest.reward * (1 + Math.floor(this.combo / 5));
+      this.particles.emit(closest.x, closest.y, 20, { color: closest.color, speed: 200, life: 0.5, radius: 4 });
+    }
+  }
+
   spawnEnemy(t, scaling) {
     const e = this.enemies.find(e => !e.active);
     if (!e) return;
@@ -193,12 +243,24 @@ export class BatmanPlanet {
 
   update(dt) {
     if (this.gameOver) return;
+    // Hit stop — briefly freeze time on impact
+    if (this.hitStop > 0) {
+      this.hitStop -= dt;
+      dt *= 0.15;
+    }
     this.player.update(dt, this.hud.joystickX, this.hud.joystickY);
     this.camera.follow(this.player.x, this.player.y);
     this.camera.update(dt);
     this.projectiles.update(dt);
     this.particles.update(dt);
     this.hud.update(dt);
+    // Combo decay
+    if (this.comboTimer > 0) {
+      this.comboTimer -= dt;
+      if (this.comboTimer <= 0) this.combo = 0;
+    }
+    if (this.comboFlash > 0) this.comboFlash -= dt * 2;
+    if (this.cameraShake > 0) this.cameraShake = Math.max(0, this.cameraShake - dt * 20);
 
     if (this.bossAnnounceTimer > 0) this.bossAnnounceTimer -= dt;
     if (this.bossActive && this.activeEnemyCount() === 0) {
@@ -296,6 +358,11 @@ export class BatmanPlanet {
   render(ctx) {
     const w = this.screenW, h = this.screenH;
     const t = Date.now() / 1000;
+    // Camera shake
+    const shakeX = this.cameraShake > 0 ? (Math.random() - 0.5) * this.cameraShake * 2 : 0;
+    const shakeY = this.cameraShake > 0 ? (Math.random() - 0.5) * this.cameraShake * 2 : 0;
+    ctx.save();
+    ctx.translate(shakeX, shakeY);
 
     // Deep night sky gradient
     const sky = ctx.createLinearGradient(0, 0, 0, h);
@@ -490,8 +557,34 @@ export class BatmanPlanet {
     ctx.fillStyle = vg;
     ctx.fillRect(0, 0, w, h);
 
+    ctx.restore();
+
     this.renderBatHUD(ctx, w, h);
     this.hud.render(ctx, w, h, { food: 0, metal: this.score, energy: 0, wave: this.wave, score: this.score }, this.player);
+
+    // Combo counter — big and cinematic
+    if (this.combo > 0) {
+      const scale = 1 + this.comboFlash * 0.5;
+      ctx.save();
+      ctx.translate(w - 140, h / 2);
+      ctx.scale(scale, scale);
+      ctx.font = 'bold 72px -apple-system, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.fillText(this.combo, 2, 2);
+      const grd = ctx.createLinearGradient(0, -40, 0, 40);
+      grd.addColorStop(0, '#ffdd44');
+      grd.addColorStop(1, '#ff6622');
+      ctx.fillStyle = grd;
+      ctx.fillText(this.combo, 0, 0);
+      ctx.font = 'bold 20px -apple-system, system-ui, sans-serif';
+      ctx.fillStyle = '#ffaa44';
+      ctx.fillText('HIT COMBO', 0, 30);
+      // Combo timer bar
+      ctx.fillStyle = 'rgba(255,170,68,0.8)';
+      ctx.fillRect(-60, 42, 120 * (this.comboTimer / 2.5), 4);
+      ctx.restore();
+    }
 
     if (this.bossAnnounceTimer > 0) {
       ctx.globalAlpha = Math.min(1, this.bossAnnounceTimer);

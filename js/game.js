@@ -698,22 +698,7 @@ export class Game {
           this.batman.tryShoot(this.input.mouseX, this.input.mouseY);
         }
         if (this.input.consumePunch()) {
-          const be = this.batman.enemies;
-          if (be) {
-            for (const e of be) {
-              if (!e.active) continue;
-              const dx = e.x - this.batman.player.x, dy = e.y - this.batman.player.y;
-              if (dx * dx + dy * dy < (this.batman.player.radius + e.radius + 30) ** 2) {
-                e.health -= 40;
-                const a = Math.atan2(dy, dx);
-                e.x += Math.cos(a) * 20;
-                e.y += Math.sin(a) * 20;
-                this.batman.particles.emit(e.x, e.y, 8, { color: '#ffdd44', speed: 150, life: 0.3, radius: 3 });
-                if (e.health <= 0) { e.active = false; this.batman.kills++; this.batman.score += e.reward; }
-              }
-            }
-          }
-          this.batman.player.punchAnim = 1;
+          this.batman.tryCombo();
         }
         this.batman.update(dt);
         if (this.batman.wave >= 5) this.tasks.complete('batman5');
