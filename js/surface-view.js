@@ -44,6 +44,9 @@ export class SurfaceView {
     this.wonGame = false;
     this.dialogue = null;
     this.dialogueTimer = 0;
+    this.screenShake = 0;
+    this.dustTimer = 0;
+    this.lastPlayerHealth = 100;
   }
 
   resize(w, h) {
@@ -299,6 +302,25 @@ export class SurfaceView {
     this.camera.follow(this.player.x, this.player.y);
     this.camera.update(dt);
     this.tileMap.update(dt, this.resources);
+
+    // Damage detect — screen shake
+    if (this.player.health < this.lastPlayerHealth) {
+      this.screenShake = Math.max(this.screenShake, 6);
+    }
+    this.lastPlayerHealth = this.player.health;
+    if (this.screenShake > 0) this.screenShake = Math.max(0, this.screenShake - dt * 20);
+
+    // Walking dust
+    const moving = Math.abs(this.hud.joystickX) > 0.1 || Math.abs(this.hud.joystickY) > 0.1;
+    if (moving) {
+      this.dustTimer += dt;
+      if (this.dustTimer > 0.15) {
+        this.dustTimer = 0;
+        this.particles.emit(this.player.x, this.player.y + this.player.radius + 4, 2, {
+          color: '#a89880', speed: 30, life: 0.4, radius: 1.5,
+        });
+      }
+    }
     // Victory cutscene pauses gameplay
     if (this.victoryCutscene) {
       this.victoryCutscene.update(dt);
@@ -424,6 +446,13 @@ export class SurfaceView {
   render(ctx) {
     ctx.fillStyle = '#0a0a1a';
     ctx.fillRect(0, 0, this.screenW, this.screenH);
+
+    // Screen shake
+    const shakeX = this.screenShake > 0 ? (Math.random() - 0.5) * this.screenShake * 2 : 0;
+    const shakeY = this.screenShake > 0 ? (Math.random() - 0.5) * this.screenShake * 2 : 0;
+    ctx.save();
+    ctx.translate(shakeX, shakeY);
+
     this.tileMap.render(ctx, this.camera);
     this.player.render(ctx, this.camera);
     this.soldiers.render(ctx, this.camera);
@@ -431,6 +460,21 @@ export class SurfaceView {
     this.projectiles.render(ctx, this.camera);
     this.particles.render(ctx, this.camera);
     this.dayNight.render(ctx, this.camera, this.screenW, this.screenH);
+    ctx.restore();
+
+    // Vignette overlay
+    const vg = ctx.createRadialGradient(this.screenW / 2, this.screenH / 2, this.screenH * 0.3, this.screenW / 2, this.screenH / 2, this.screenH * 0.85);
+    vg.addColorStop(0, 'rgba(0,0,0,0)');
+    vg.addColorStop(0.7, 'rgba(0,0,0,0.25)');
+    vg.addColorStop(1, 'rgba(0,0,0,0.7)');
+    ctx.fillStyle = vg;
+    ctx.fillRect(0, 0, this.screenW, this.screenH);
+
+    // Damage flash
+    if (this.player.invulnTimer > 0) {
+      ctx.fillStyle = `rgba(255, 0, 0, ${this.player.invulnTimer * 0.3})`;
+      ctx.fillRect(0, 0, this.screenW, this.screenH);
+    }
 
     // Skin button
     const btnSize = 56;
