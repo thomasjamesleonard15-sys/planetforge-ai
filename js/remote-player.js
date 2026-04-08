@@ -99,13 +99,54 @@ export class RemotePlayerPool {
       if (!rp.active) continue;
       const s = camera.worldToScreen(rp.x, rp.y);
       const sk = SKINS[rp.skinIndex % SKINS.length];
+      const r = rp.radius;
+      const t = Date.now() / 150 + rp.x * 0.01;
+      const walk = Math.sin(t) * 2;
 
-      if (sk.detail === 'cape') renderSkinDetail(ctx, s.x, s.y, rp.radius, sk);
+      ctx.globalAlpha = 0.9;
 
-      ctx.globalAlpha = 0.85;
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
       ctx.beginPath();
-      ctx.arc(s.x, s.y, rp.radius, 0, Math.PI * 2);
-      const grad = ctx.createRadialGradient(s.x - 3, s.y - 3, 2, s.x, s.y, rp.radius);
+      ctx.ellipse(s.x, s.y + r + 18, r * 0.9, r * 0.3, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Legs
+      ctx.fillStyle = sk.body2;
+      ctx.fillRect(s.x - 6, s.y + r + 4, 4, 12 + walk);
+      ctx.fillRect(s.x + 2, s.y + r + 4, 4, 12 - walk);
+      ctx.fillStyle = '#222';
+      ctx.fillRect(s.x - 7, s.y + r + 14 + walk, 6, 4);
+      ctx.fillRect(s.x + 1, s.y + r + 14 - walk, 6, 4);
+
+      if (sk.detail === 'cape') renderSkinDetail(ctx, s.x, s.y, r, sk);
+
+      // Torso
+      ctx.fillStyle = sk.body1;
+      ctx.beginPath();
+      ctx.moveTo(s.x - r * 0.85, s.y + r - 2);
+      ctx.lineTo(s.x - r * 0.95, s.y + r + 12);
+      ctx.lineTo(s.x + r * 0.95, s.y + r + 12);
+      ctx.lineTo(s.x + r * 0.85, s.y + r - 2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = sk.body2;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.fillStyle = sk.visor;
+      ctx.fillRect(s.x - 2, s.y + r, 4, 4);
+
+      // Arms
+      ctx.fillStyle = sk.body1;
+      ctx.beginPath();
+      ctx.arc(s.x - r * 0.95 - 2, s.y + r + 4, 4, 0, Math.PI * 2);
+      ctx.arc(s.x + r * 0.95 + 2, s.y + r + 4, 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Head
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, r, 0, Math.PI * 2);
+      const grad = ctx.createRadialGradient(s.x - 3, s.y - 3, 2, s.x, s.y, r);
       grad.addColorStop(0, sk.body1);
       grad.addColorStop(1, sk.body2);
       ctx.fillStyle = grad;
@@ -116,19 +157,21 @@ export class RemotePlayerPool {
       ctx.fillStyle = sk.visor;
       ctx.fill();
 
-      if (sk.detail && sk.detail !== 'cape') renderSkinDetail(ctx, s.x, s.y, rp.radius, sk);
+      if (sk.detail && sk.detail !== 'cape') renderSkinDetail(ctx, s.x, s.y, r, sk);
 
       const barW = 30, barH = 4;
       const hpPct = rp.health / rp.maxHealth;
       ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      ctx.fillRect(s.x - barW / 2, s.y - rp.radius - 10, barW, barH);
+      ctx.fillRect(s.x - barW / 2, s.y - r - 10, barW, barH);
       ctx.fillStyle = hpPct > 0.3 ? '#44ff66' : '#ff4444';
-      ctx.fillRect(s.x - barW / 2, s.y - rp.radius - 10, barW * hpPct, barH);
+      ctx.fillRect(s.x - barW / 2, s.y - r - 10, barW * hpPct, barH);
 
-      ctx.font = '9px -apple-system, system-ui, sans-serif';
+      ctx.font = 'bold 10px -apple-system, system-ui, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillStyle = 'rgba(255,200,100,0.7)';
-      ctx.fillText(rp.name || sk.name, s.x, s.y + rp.radius + 12);
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.fillText(rp.name || sk.name, s.x + 1, s.y + r + 30);
+      ctx.fillStyle = 'rgba(255,200,100,0.85)';
+      ctx.fillText(rp.name || sk.name, s.x, s.y + r + 29);
       ctx.textAlign = 'left';
       ctx.globalAlpha = 1;
     }

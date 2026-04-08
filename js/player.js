@@ -73,19 +73,74 @@ export class Player {
 
     const sk = this.skin;
     const r = this.radius;
+    const t = Date.now() / 150;
+    const walk = Math.sin(t) * 2;
 
     // Soft shadow underneath
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
     ctx.beginPath();
-    ctx.ellipse(s.x, s.y + r + 2, r * 0.8, r * 0.25, 0, 0, Math.PI * 2);
+    ctx.ellipse(s.x, s.y + r + 18, r * 0.9, r * 0.3, 0, 0, Math.PI * 2);
     ctx.fill();
+
+    // Legs
+    const legColor = this.darken(sk.body2, 0.2);
+    ctx.fillStyle = legColor;
+    ctx.fillRect(s.x - 6, s.y + r + 4, 4, 12 + walk);
+    ctx.fillRect(s.x + 2, s.y + r + 4, 4, 12 - walk);
+    // Boots
+    ctx.fillStyle = '#222';
+    ctx.fillRect(s.x - 7, s.y + r + 14 + walk, 6, 4);
+    ctx.fillRect(s.x + 1, s.y + r + 14 - walk, 6, 4);
 
     // Detail behind body (cape, etc)
     if (sk.detail === 'cape') {
       renderSkinDetail(ctx, s.x, s.y, r, sk);
     }
 
-    // Body — head sphere with strong shading
+    // Torso — chest armor
+    const torsoY = s.y + r - 2;
+    const torsoG = ctx.createLinearGradient(s.x - r, torsoY, s.x + r, torsoY);
+    torsoG.addColorStop(0, this.darken(sk.body1, 0.3));
+    torsoG.addColorStop(0.5, sk.body1);
+    torsoG.addColorStop(1, this.darken(sk.body1, 0.4));
+    ctx.fillStyle = torsoG;
+    ctx.beginPath();
+    ctx.moveTo(s.x - r * 0.85, torsoY);
+    ctx.lineTo(s.x - r * 0.95, torsoY + 14);
+    ctx.lineTo(s.x + r * 0.95, torsoY + 14);
+    ctx.lineTo(s.x + r * 0.85, torsoY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = this.darken(sk.body2, 0.5);
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // Chest detail
+    ctx.fillStyle = sk.visor;
+    ctx.fillRect(s.x - 2, torsoY + 2, 4, 4);
+    ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(s.x, torsoY);
+    ctx.lineTo(s.x, torsoY + 14);
+    ctx.stroke();
+
+    // Arms
+    ctx.fillStyle = sk.body1;
+    ctx.beginPath();
+    ctx.arc(s.x - r * 0.95 - 2, torsoY + 6 - walk * 0.5, 4, 0, Math.PI * 2);
+    ctx.arc(s.x + r * 0.95 + 2, torsoY + 6 + walk * 0.5, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = this.darken(sk.body2, 0.5);
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    // Hands
+    ctx.fillStyle = '#eecc99';
+    ctx.beginPath();
+    ctx.arc(s.x - r * 0.95 - 2, torsoY + 11 - walk * 0.5, 2.5, 0, Math.PI * 2);
+    ctx.arc(s.x + r * 0.95 + 2, torsoY + 11 + walk * 0.5, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Head sphere with strong shading
     ctx.beginPath();
     ctx.arc(s.x, s.y, r, 0, Math.PI * 2);
     const grad = ctx.createRadialGradient(s.x - r * 0.4, s.y - r * 0.5, r * 0.05, s.x, s.y, r * 1.1);
@@ -129,7 +184,7 @@ export class Player {
       renderSkinDetail(ctx, s.x, s.y, r, sk);
     }
 
-    // Health bar with glow when low
+    // Health bar above head
     const barW = 32;
     const barH = 5;
     const hpPct = this.health / this.maxHealth;
@@ -145,13 +200,13 @@ export class Player {
     ctx.fillStyle = hpColor;
     ctx.fillRect(s.x - barW / 2, s.y - r - 11, barW * hpPct, barH);
 
-    // Name with shadow
+    // Name below legs
     ctx.font = 'bold 10px -apple-system, system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillStyle = 'rgba(0,0,0,0.7)';
-    ctx.fillText(sk.name, s.x + 1, s.y + r + 14);
-    ctx.fillStyle = 'rgba(255,255,255,0.7)';
-    ctx.fillText(sk.name, s.x, s.y + r + 13);
+    ctx.fillText(sk.name, s.x + 1, s.y + r + 30);
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    ctx.fillText(sk.name, s.x, s.y + r + 29);
     ctx.textAlign = 'left';
   }
 
