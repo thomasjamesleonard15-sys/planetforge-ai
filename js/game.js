@@ -884,13 +884,20 @@ export class Game {
       ctx.beginPath();
       ctx.roundRect(60, 104, 40, 30, 8);
       ctx.fill();
-      ctx.strokeStyle = 'rgba(100, 255, 120, 0.5)';
+      ctx.strokeStyle = this.input.gamepadActive ? 'rgba(100, 255, 120, 0.9)' : 'rgba(100, 255, 120, 0.4)';
+      ctx.lineWidth = 2;
       ctx.stroke();
       ctx.font = '16px -apple-system, system-ui, sans-serif';
       ctx.textAlign = 'center';
       ctx.fillStyle = '#88ff88';
       ctx.fillText('🎮', 80, 124);
       ctx.textAlign = 'left';
+      // Show name briefly
+      if (!this.input.gamepadActive) {
+        ctx.font = '10px -apple-system, system-ui, sans-serif';
+        ctx.fillStyle = '#88ff88';
+        ctx.fillText('Press any button', 105, 122);
+      }
     }
 
     this.tasks.render(ctx, this.width, this.height);

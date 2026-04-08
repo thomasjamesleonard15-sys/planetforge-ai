@@ -20,18 +20,27 @@ export class InputHandler {
     this.lastGamepadFire = false;
     this.lastGamepadEnter = false;
     this.gamepadConnected = false;
+    this.gamepadActive = false;
     this.gamepadName = '';
 
     window.addEventListener('gamepadconnected', (e) => {
       this.gamepadConnected = true;
       this.gamepadName = e.gamepad ? e.gamepad.id : 'Gamepad';
-      console.log('Gamepad connected:', this.gamepadName);
+      console.log('Gamepad connected:', this.gamepadName, 'buttons:', e.gamepad.buttons.length, 'axes:', e.gamepad.axes.length);
     });
     window.addEventListener('gamepaddisconnected', () => {
       this.gamepadConnected = false;
       this.gamepadAxes.x = 0; this.gamepadAxes.y = 0;
       this.gamepadFire = false; this.gamepadPunch = false;
+      console.log('Gamepad disconnected');
     });
+
+    // Poll gamepad independently in RAF loop (in case game isn't updating every frame)
+    const pollLoop = () => {
+      this.pollGamepad();
+      requestAnimationFrame(pollLoop);
+    };
+    requestAnimationFrame(pollLoop);
     this.keys = new Set();
     this.joystickTouchId = null;
     this.actionTouchId = null;
@@ -148,8 +157,13 @@ export class InputHandler {
   pollGamepad() {
     if (!navigator.getGamepads) return;
     const gps = navigator.getGamepads();
+    // Find the first connected gamepad with any active input
     let gp = null;
-    for (const g of gps) { if (g) { gp = g; break; } }
+    for (const g of gps) {
+      if (!g || !g.connected) continue;
+      gp = g;
+      break;
+    }
     if (!gp) {
       this.gamepadConnected = false;
       this.gamepadAxes.x = 0; this.gamepadAxes.y = 0;
@@ -159,45 +173,63 @@ export class InputHandler {
       return;
     }
     this.gamepadConnected = true;
+    this.gamepadName = gp.id;
 
     const dead = 0.18;
-    // Left stick — move
-    const lx = gp.axes[0] || 0;
-    const ly = gp.axes[1] || 0;
+    const axes = gp.axes || [];
+    const buttons = gp.buttons || [];
+
+    // Left stick — move (axes[0], axes[1])
+    const lx = axes[0] || 0;
+    const ly = axes[1] || 0;
     this.gamepadAxes.x = Math.abs(lx) > dead ? lx : 0;
     this.gamepadAxes.y = Math.abs(ly) > dead ? ly : 0;
-    // Right stick — look/aim
-    const rx = gp.axes[2] || 0;
-    const ry = gp.axes[3] || 0;
+
+    // Right stick — look (axes[2], axes[3])
+    const rx = axes[2] || 0;
+    const ry = axes[3] || 0;
     this.gamepadLookAxes.x = Math.abs(rx) > dead ? rx : 0;
     this.gamepadLookAxes.y = Math.abs(ry) > dead ? ry : 0;
 
-    // Fire — any of: RT (7), RB (5), A (0)
-    const bFire = gp.buttons;
-    const fire =
-      (bFire[7] && (bFire[7].pressed || bFire[7].value > 0.5)) ||
-      (bFire[5] && bFire[5].pressed) ||
-      (bFire[0] && bFire[0].pressed);
+    // Helper — check button with fallback to value (for triggers that report as buttons with 0-1 value)
+    const isPressed = (idx) => {
+      const b = buttons[idx];
+      if (!b) return false;
+      if (b.pressed) return true;
+      if (b.value !== undefined && b.value > 0.5) return true;
+      return false;
+    };
+
+    // Fire = A (0) OR RB (5) OR RT (7)
+    // Also support trigger as axis (Safari reports LT/RT as axes[6]/axes[7] on some pads)
+    let triggerFire = false;
+    if (axes.length > 6 && axes[7] !== undefined && axes[7] > 0) triggerFire = true;
+    const fire = isPressed(0) || isPressed(5) || isPressed(7) || triggerFire;
     this.gamepadJustFire = fire && !this.lastGamepadFire;
     this.lastGamepadFire = fire;
     this.gamepadFire = fire;
 
-    // Punch — X (2)
-    const punch = gp.buttons[2] && gp.buttons[2].pressed;
+    // Punch = X (2) OR B (1)
+    const punch = isPressed(2) || isPressed(1);
     this.gamepadJustPunch = punch && !this.lastGamepadPunch;
     this.lastGamepadPunch = punch;
     this.gamepadPunch = punch;
 
-    // Start (9) = Enter
-    const start = gp.buttons[9] && gp.buttons[9].pressed;
+    // Start (9) or Select (8) = Enter / interact
+    const start = isPressed(9) || isPressed(8);
     if (start && !this.lastGamepadEnter) this.enterPressed = true;
     this.lastGamepadEnter = start;
 
-    // D-pad as directional fallback (buttons 12=up, 13=down, 14=left, 15=right)
-    if (bFire[12] && bFire[12].pressed) this.gamepadAxes.y = -1;
-    if (bFire[13] && bFire[13].pressed) this.gamepadAxes.y = 1;
-    if (bFire[14] && bFire[14].pressed) this.gamepadAxes.x = -1;
-    if (bFire[15] && bFire[15].pressed) this.gamepadAxes.x = 1;
+    // D-pad (buttons 12-15) — override stick if pressed
+    if (isPressed(12)) this.gamepadAxes.y = -1;
+    if (isPressed(13)) this.gamepadAxes.y = 1;
+    if (isPressed(14)) this.gamepadAxes.x = -1;
+    if (isPressed(15)) this.gamepadAxes.x = 1;
+
+    // Mark that we've seen activity (for debug)
+    if (fire || punch || start || Math.abs(lx) > 0.1 || Math.abs(ly) > 0.1 || Math.abs(rx) > 0.1 || Math.abs(ry) > 0.1) {
+      this.gamepadActive = true;
+    }
   }
 
   isFiring() {
@@ -214,7 +246,6 @@ export class InputHandler {
   }
 
   getMoveVector() {
-    this.pollGamepad();
     let mx = 0;
     let my = 0;
     if (this.keys.has('w') || this.keys.has('arrowup')) my -= 1;
