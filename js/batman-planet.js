@@ -295,37 +295,144 @@ export class BatmanPlanet {
 
   render(ctx) {
     const w = this.screenW, h = this.screenH;
-    ctx.fillStyle = '#0a0a15';
+    const t = Date.now() / 1000;
+
+    // Deep night sky gradient
+    const sky = ctx.createLinearGradient(0, 0, 0, h);
+    sky.addColorStop(0, '#050508');
+    sky.addColorStop(0.4, '#0a0a18');
+    sky.addColorStop(0.7, '#18101a');
+    sky.addColorStop(1, '#0a0510');
+    ctx.fillStyle = sky;
     ctx.fillRect(0, 0, w, h);
 
+    // Full moon with cloudy halo
+    const moonX = w * 0.75, moonY = h * 0.15;
+    const moonGlow = ctx.createRadialGradient(moonX, moonY, 20, moonX, moonY, 140);
+    moonGlow.addColorStop(0, 'rgba(230, 220, 180, 0.35)');
+    moonGlow.addColorStop(0.5, 'rgba(180, 170, 140, 0.1)');
+    moonGlow.addColorStop(1, 'rgba(100, 100, 120, 0)');
+    ctx.fillStyle = moonGlow;
+    ctx.beginPath();
+    ctx.arc(moonX, moonY, 140, 0, Math.PI * 2);
+    ctx.fill();
+    // Moon body
+    const moonBody = ctx.createRadialGradient(moonX - 10, moonY - 10, 5, moonX, moonY, 35);
+    moonBody.addColorStop(0, '#fff5d8');
+    moonBody.addColorStop(0.6, '#d8d0b0');
+    moonBody.addColorStop(1, '#8a8270');
+    ctx.fillStyle = moonBody;
+    ctx.beginPath();
+    ctx.arc(moonX, moonY, 35, 0, Math.PI * 2);
+    ctx.fill();
+    // Moon craters
+    ctx.fillStyle = 'rgba(100, 95, 70, 0.4)';
+    ctx.beginPath();
+    ctx.arc(moonX - 8, moonY - 5, 6, 0, Math.PI * 2);
+    ctx.arc(moonX + 12, moonY + 8, 4, 0, Math.PI * 2);
+    ctx.arc(moonX - 2, moonY + 15, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Distant city silhouette layer 1 (farthest)
+    this.renderCitySkyline(ctx, w, h, h * 0.55, 0.4, '#0a0612', 1.8);
+    // Mid layer
+    this.renderCitySkyline(ctx, w, h, h * 0.62, 0.65, '#110818', 2.3);
+    // Close layer
+    this.renderCitySkyline(ctx, w, h, h * 0.7, 0.9, '#18101e', 2.7);
+
+    // Fog layer
+    const fog = ctx.createLinearGradient(0, h * 0.55, 0, h * 0.85);
+    fog.addColorStop(0, 'rgba(80, 70, 100, 0)');
+    fog.addColorStop(0.5, 'rgba(80, 70, 100, 0.2)');
+    fog.addColorStop(1, 'rgba(50, 40, 70, 0.4)');
+    ctx.fillStyle = fog;
+    ctx.fillRect(0, h * 0.55, w, h * 0.3);
+
+    // Rain behind the playfield
+    ctx.strokeStyle = 'rgba(180, 200, 230, 0.4)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 80; i++) {
+      const rx = (i * 73 + t * 400) % w;
+      const ry = (i * 131 + t * 700) % h;
+      ctx.beginPath();
+      ctx.moveTo(rx, ry);
+      ctx.lineTo(rx - 3, ry - 10);
+      ctx.stroke();
+    }
+
+    // Player-scale buildings
     for (const b of this.buildings) {
       if (!this.camera.isVisible(b.x, b.y, 200)) continue;
       const s = this.camera.worldToScreen(b.x, b.y);
-      ctx.fillStyle = '#151520';
+      // Shadow/side
+      ctx.fillStyle = '#080812';
+      ctx.fillRect(s.x - 2, s.y - b.h, b.w + 4, b.h);
+      // Main body gradient
+      const bg = ctx.createLinearGradient(s.x, s.y - b.h, s.x + b.w, s.y - b.h);
+      bg.addColorStop(0, '#1a1a28');
+      bg.addColorStop(0.5, '#222236');
+      bg.addColorStop(1, '#101018');
+      ctx.fillStyle = bg;
       ctx.fillRect(s.x, s.y - b.h, b.w, b.h);
-      ctx.strokeStyle = '#222233';
+      ctx.strokeStyle = '#0a0a14';
       ctx.lineWidth = 1;
       ctx.strokeRect(s.x, s.y - b.h, b.w, b.h);
+      // Windows with flicker
       for (let wy = 0; wy < b.h - 15; wy += 20) {
         for (let wx = 8; wx < b.w - 8; wx += 16) {
           const lit = Math.sin(b.x * 3 + wx + wy) > 0.3;
-          ctx.fillStyle = lit ? '#ffdd66' : '#111118';
+          const flicker = lit && Math.sin(t * 3 + wx + wy) > -0.8;
+          ctx.fillStyle = flicker ? '#ffcc55' : '#0a0a14';
           ctx.fillRect(s.x + wx, s.y - b.h + wy + 8, 8, 10);
+          if (flicker) {
+            ctx.fillStyle = 'rgba(255, 200, 80, 0.15)';
+            ctx.fillRect(s.x + wx - 2, s.y - b.h + wy + 6, 12, 14);
+          }
         }
+      }
+      // Rooftop antenna (random)
+      if ((b.x | 0) % 3 === 0) {
+        ctx.strokeStyle = '#0a0a14';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(s.x + b.w / 2, s.y - b.h);
+        ctx.lineTo(s.x + b.w / 2, s.y - b.h - 12);
+        ctx.stroke();
+        ctx.fillStyle = '#ff2222';
+        ctx.beginPath();
+        ctx.arc(s.x + b.w / 2, s.y - b.h - 12, 1.5, 0, Math.PI * 2);
+        ctx.fill();
       }
     }
 
     this.renderEnemies(ctx);
-    this.player.render(ctx, this.camera);
+
+    // Batman with flowing cape (replace player render)
+    this.renderBatman(ctx);
+
     this.projectiles.render(ctx, this.camera);
     this.particles.render(ctx, this.camera);
+
+    // Lightning flash occasionally
+    const flash = Math.sin(t * 0.3) > 0.995 ? 1 : 0;
+    if (flash > 0) {
+      ctx.fillStyle = `rgba(200, 220, 255, ${flash * 0.4})`;
+      ctx.fillRect(0, 0, w, h);
+    }
+
+    // Heavy vignette
+    const vg = ctx.createRadialGradient(w / 2, h / 2, h * 0.2, w / 2, h / 2, h * 0.9);
+    vg.addColorStop(0, 'rgba(0,0,0,0)');
+    vg.addColorStop(1, 'rgba(0,0,0,0.85)');
+    ctx.fillStyle = vg;
+    ctx.fillRect(0, 0, w, h);
 
     this.renderBatHUD(ctx, w, h);
     this.hud.render(ctx, w, h, { food: 0, metal: this.score, energy: 0, wave: this.wave, score: this.score }, this.player);
 
     if (this.bossAnnounceTimer > 0) {
       ctx.globalAlpha = Math.min(1, this.bossAnnounceTimer);
-      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
       ctx.fillRect(0, h * 0.35, w, h * 0.15);
       ctx.font = 'bold 28px -apple-system, system-ui, sans-serif';
       ctx.textAlign = 'center';
@@ -334,6 +441,253 @@ export class BatmanPlanet {
       ctx.textAlign = 'left';
       ctx.globalAlpha = 1;
     }
+  }
+
+  renderCitySkyline(ctx, w, h, baseY, parallax, color, scale) {
+    const t = Date.now() / 10000;
+    const offset = (this.camera.x * parallax * 0.05) % 200;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(0, baseY);
+    // Procedural building heights
+    let x = -offset;
+    let idx = 0;
+    while (x < w + 40) {
+      const hash = Math.sin(idx * 73.7) * 10000;
+      const buildingH = (20 + (hash - Math.floor(hash)) * 60) * scale;
+      const buildingW = (15 + ((Math.cos(idx * 41.3) + 1) * 20)) * scale;
+      const variant = idx % 4;
+      ctx.lineTo(x, baseY);
+      ctx.lineTo(x, baseY - buildingH);
+      // Roof decoration
+      if (variant === 0) {
+        // Flat with antenna
+        ctx.lineTo(x + buildingW * 0.3, baseY - buildingH);
+        ctx.lineTo(x + buildingW * 0.3, baseY - buildingH - 8 * scale);
+        ctx.lineTo(x + buildingW * 0.4, baseY - buildingH - 8 * scale);
+        ctx.lineTo(x + buildingW * 0.4, baseY - buildingH);
+        ctx.lineTo(x + buildingW, baseY - buildingH);
+      } else if (variant === 1) {
+        // Stepped
+        ctx.lineTo(x + buildingW * 0.2, baseY - buildingH);
+        ctx.lineTo(x + buildingW * 0.2, baseY - buildingH - 10 * scale);
+        ctx.lineTo(x + buildingW * 0.8, baseY - buildingH - 10 * scale);
+        ctx.lineTo(x + buildingW * 0.8, baseY - buildingH);
+        ctx.lineTo(x + buildingW, baseY - buildingH);
+      } else if (variant === 2) {
+        // Peaked roof
+        ctx.lineTo(x + buildingW / 2, baseY - buildingH - 12 * scale);
+        ctx.lineTo(x + buildingW, baseY - buildingH);
+      } else {
+        // Plain
+        ctx.lineTo(x + buildingW, baseY - buildingH);
+      }
+      ctx.lineTo(x + buildingW, baseY);
+      x += buildingW;
+      idx++;
+    }
+    ctx.lineTo(w, baseY);
+    ctx.lineTo(w, h);
+    ctx.lineTo(0, h);
+    ctx.closePath();
+    ctx.fill();
+
+    // Sparse lit windows in the silhouette
+    if (parallax > 0.5) {
+      ctx.fillStyle = 'rgba(255, 200, 80, 0.4)';
+      x = -offset;
+      idx = 0;
+      while (x < w) {
+        const hash = Math.sin(idx * 73.7) * 10000;
+        const buildingH = (20 + (hash - Math.floor(hash)) * 60) * scale;
+        const buildingW = (15 + ((Math.cos(idx * 41.3) + 1) * 20)) * scale;
+        if (idx % 3 === 0) {
+          for (let wy = 10; wy < buildingH - 10; wy += 14) {
+            for (let wx = 4; wx < buildingW - 4; wx += 10) {
+              if (Math.sin(idx * 7 + wy * 3 + wx) > 0.4) {
+                ctx.fillRect(x + wx, baseY - buildingH + wy, 3, 4);
+              }
+            }
+          }
+        }
+        x += buildingW;
+        idx++;
+      }
+    }
+  }
+
+  renderBatman(ctx) {
+    const s = this.camera.worldToScreen(this.player.x, this.player.y);
+    const blink = this.player.invulnTimer > 0 && Math.sin(this.player.invulnTimer * 30) > 0;
+    if (blink) return;
+    const t = Date.now() / 150;
+    const walk = Math.sin(t) * 2;
+    const r = this.player.radius;
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.beginPath();
+    ctx.ellipse(s.x + 6, s.y + r + 22, r * 1.7, r * 0.4, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Flowing cape behind — animated with wind
+    const capeTime = Date.now() / 400;
+    ctx.save();
+    ctx.translate(s.x, s.y + 2);
+    ctx.fillStyle = '#0a0a14';
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.9, 0);
+    // Left side waves
+    for (let i = 0; i <= 5; i++) {
+      const ti = i / 5;
+      const px = -r * 1.5 + Math.sin(capeTime + i * 0.8) * 4 - ti * r * 0.3;
+      const py = ti * r * 2.2 + Math.cos(capeTime * 1.3 + i) * 2;
+      ctx.lineTo(px, py);
+    }
+    // Bottom jagged edge
+    for (let i = 0; i < 6; i++) {
+      const px = -r * 1.2 + i * r * 0.5 + Math.sin(capeTime + i) * 3;
+      const py = r * 2.2 + (i % 2) * 6 + Math.sin(capeTime * 2 + i) * 2;
+      ctx.lineTo(px, py);
+    }
+    // Right side
+    for (let i = 5; i >= 0; i--) {
+      const ti = i / 5;
+      const px = r * 1.5 - Math.sin(capeTime + i * 0.8) * 4 + ti * r * 0.3;
+      const py = ti * r * 2.2 + Math.cos(capeTime * 1.3 + i) * 2;
+      ctx.lineTo(px, py);
+    }
+    ctx.lineTo(r * 0.9, 0);
+    ctx.closePath();
+    ctx.fill();
+    // Cape highlight
+    ctx.strokeStyle = '#222236';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    // Inner cape shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.5, r * 0.5);
+    ctx.lineTo(r * 0.5, r * 0.5);
+    ctx.lineTo(0, r * 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    // Legs
+    ctx.fillStyle = '#111';
+    ctx.fillRect(s.x - 6, s.y + r + 4, 4, 12 + walk);
+    ctx.fillRect(s.x + 2, s.y + r + 4, 4, 12 - walk);
+    ctx.fillStyle = '#222';
+    ctx.fillRect(s.x - 7, s.y + r + 14 + walk, 6, 4);
+    ctx.fillRect(s.x + 1, s.y + r + 14 - walk, 6, 4);
+
+    // Torso — dark armor
+    const torsoY = s.y + r - 2;
+    ctx.fillStyle = '#1a1a22';
+    ctx.beginPath();
+    ctx.moveTo(s.x - r * 0.9, torsoY);
+    ctx.quadraticCurveTo(s.x - r * 1.05, torsoY + 7, s.x - r, torsoY + 14);
+    ctx.lineTo(s.x + r, torsoY + 14);
+    ctx.quadraticCurveTo(s.x + r * 1.05, torsoY + 7, s.x + r * 0.9, torsoY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // Bat emblem on chest (original simple silhouette — pointed oval with wings)
+    ctx.fillStyle = '#ffdd22';
+    ctx.beginPath();
+    ctx.ellipse(s.x, torsoY + 7, r * 0.5, r * 0.25, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.moveTo(s.x - r * 0.4, torsoY + 7);
+    ctx.lineTo(s.x - r * 0.15, torsoY + 3);
+    ctx.lineTo(s.x - r * 0.1, torsoY + 6);
+    ctx.lineTo(s.x, torsoY + 4);
+    ctx.lineTo(s.x + r * 0.1, torsoY + 6);
+    ctx.lineTo(s.x + r * 0.15, torsoY + 3);
+    ctx.lineTo(s.x + r * 0.4, torsoY + 7);
+    ctx.lineTo(s.x + r * 0.3, torsoY + 10);
+    ctx.lineTo(s.x, torsoY + 9);
+    ctx.lineTo(s.x - r * 0.3, torsoY + 10);
+    ctx.closePath();
+    ctx.fill();
+    // Belt
+    ctx.fillStyle = '#ffdd22';
+    ctx.fillRect(s.x - r * 0.9, torsoY + 11, r * 1.8, 3);
+
+    // Arms
+    ctx.fillStyle = '#1a1a22';
+    ctx.beginPath();
+    ctx.arc(s.x - r * 0.95 - 2, torsoY + 4 - walk * 0.5, 4.5, 0, Math.PI * 2);
+    ctx.arc(s.x + r * 0.95 + 2, torsoY + 4 + walk * 0.5, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#000';
+    ctx.stroke();
+    // Gauntlet fins
+    ctx.fillStyle = '#0a0a14';
+    ctx.beginPath();
+    ctx.moveTo(s.x - r * 0.95 - 6, torsoY + 8 - walk * 0.5);
+    ctx.lineTo(s.x - r * 0.95 - 10, torsoY + 10 - walk * 0.5);
+    ctx.lineTo(s.x - r * 0.95 - 4, torsoY + 12 - walk * 0.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(s.x + r * 0.95 + 6, torsoY + 8 + walk * 0.5);
+    ctx.lineTo(s.x + r * 0.95 + 10, torsoY + 10 + walk * 0.5);
+    ctx.lineTo(s.x + r * 0.95 + 4, torsoY + 12 + walk * 0.5);
+    ctx.closePath();
+    ctx.fill();
+
+    // Head — cowl with ears
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, r, 0, Math.PI * 2);
+    const cowlG = ctx.createRadialGradient(s.x - r * 0.4, s.y - r * 0.5, r * 0.05, s.x, s.y, r * 1.1);
+    cowlG.addColorStop(0, '#2a2a38');
+    cowlG.addColorStop(0.5, '#15151e');
+    cowlG.addColorStop(1, '#050508');
+    ctx.fillStyle = cowlG;
+    ctx.fill();
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // Pointed ears
+    ctx.fillStyle = '#0a0a12';
+    ctx.beginPath();
+    ctx.moveTo(s.x - r * 0.6, s.y - r * 0.6);
+    ctx.lineTo(s.x - r * 0.4, s.y - r * 1.4);
+    ctx.lineTo(s.x - r * 0.2, s.y - r * 0.7);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(s.x + r * 0.6, s.y - r * 0.6);
+    ctx.lineTo(s.x + r * 0.4, s.y - r * 1.4);
+    ctx.lineTo(s.x + r * 0.2, s.y - r * 0.7);
+    ctx.closePath();
+    ctx.fill();
+    // White eye slits
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.ellipse(s.x - r * 0.3, s.y - 2, r * 0.18, r * 0.08, -0.2, 0, Math.PI * 2);
+    ctx.ellipse(s.x + r * 0.3, s.y - 2, r * 0.18, r * 0.08, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    // Mouth line
+    ctx.strokeStyle = '#444';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(s.x - r * 0.3, s.y + r * 0.3);
+    ctx.lineTo(s.x + r * 0.3, s.y + r * 0.3);
+    ctx.stroke();
+
+    // Health bar
+    const barW = 32;
+    const hpPct = this.player.health / this.player.maxHealth;
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(s.x - barW / 2 - 1, s.y - r - 12, barW + 2, 7);
+    ctx.fillStyle = hpPct > 0.5 ? '#44ff66' : hpPct > 0.25 ? '#ffaa22' : '#ff4444';
+    ctx.fillRect(s.x - barW / 2, s.y - r - 11, barW * hpPct, 5);
   }
 
   renderEnemies(ctx) {
