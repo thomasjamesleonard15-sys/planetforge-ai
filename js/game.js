@@ -782,6 +782,27 @@ export class Game {
     for (const g of gps) {
       if (g) { count++; if (!gp && g.connected) gp = g; }
     }
+
+    // Big unmissable prompt if no gamepad active yet
+    if (!gp && this.state !== STATE.TITLE) {
+      const t = Date.now() / 500;
+      const pulse = 0.6 + Math.sin(t) * 0.4;
+      ctx.globalAlpha = pulse;
+      ctx.fillStyle = 'rgba(40, 10, 10, 0.8)';
+      ctx.fillRect(this.width / 2 - 300, 10, 600, 60);
+      ctx.strokeStyle = '#ff6644';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(this.width / 2 - 300, 10, 600, 60);
+      ctx.font = 'bold 22px -apple-system, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ffaa66';
+      ctx.fillText('🎮 PRESS ANY BUTTON ON YOUR CONTROLLER 🎮', this.width / 2, 38);
+      ctx.font = '13px -apple-system, system-ui, sans-serif';
+      ctx.fillStyle = '#ff8866';
+      ctx.fillText('Chrome requires a button press to activate the gamepad', this.width / 2, 58);
+      ctx.globalAlpha = 1;
+      ctx.textAlign = 'left';
+    }
     const dy = this.height - 90;
     ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
     ctx.fillRect(0, dy, 500, 90);

@@ -41,6 +41,14 @@ export class InputHandler {
       requestAnimationFrame(pollLoop);
     };
     requestAnimationFrame(pollLoop);
+
+    // Focus the canvas aggressively so Gamepad API sees page gestures
+    const focusCanvas = () => { try { canvas.focus(); } catch (_) {} };
+    window.addEventListener('click', focusCanvas);
+    window.addEventListener('touchstart', focusCanvas);
+    window.addEventListener('keydown', focusCanvas);
+    // Also focus on load
+    setTimeout(focusCanvas, 100);
     this.keys = new Set();
     this.joystickTouchId = null;
     this.actionTouchId = null;
