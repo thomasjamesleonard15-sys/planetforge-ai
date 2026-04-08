@@ -265,7 +265,32 @@ export class SpaceView {
       } else { this.shipThrust = false; }
     }
 
-    this.shipVX *= SHIP_DRAG; this.shipVY *= SHIP_DRAG;
+    // Gravity from planets
+    if (!this.eva) {
+      for (const p of this.planets) {
+        const dx = p.spaceX - this.shipX;
+        const dy = p.spaceY - this.shipY;
+        const distSq = dx * dx + dy * dy;
+        const dist = Math.sqrt(distSq);
+        if (dist > p.radius * 0.5) {
+          const G = 8000 * (p.radius / 50);
+          const pull = G / Math.max(distSq, 1000);
+          this.shipVX += (dx / dist) * pull * dt * 60;
+          this.shipVY += (dy / dist) * pull * dt * 60;
+        }
+        // Crash into planet
+        if (dist < p.radius && dist > 5) {
+          this.shipHealth -= 30 * dt;
+          const pa = Math.atan2(-dy, -dx);
+          this.shipVX += Math.cos(pa) * 200 * dt;
+          this.shipVY += Math.sin(pa) * 200 * dt;
+          if (this.shipHealth <= 0) { this.shipHealth = 0; this.gameOver = true; }
+        }
+      }
+    }
+
+    // Light drag (less than before for momentum-based physics)
+    this.shipVX *= 0.995; this.shipVY *= 0.995;
     this.shipX += this.shipVX * dt; this.shipY += this.shipVY * dt;
     if (this.shipX < -30) this.shipX = this.screenW + 30;
     if (this.shipX > this.screenW + 30) this.shipX = -30;
