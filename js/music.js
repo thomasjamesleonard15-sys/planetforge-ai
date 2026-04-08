@@ -45,7 +45,7 @@ export class MusicSystem {
     if (this.mode === mode) return;
     this.mode = mode;
     this.beat = 0;
-    this.bpm = mode === 'batman' ? 95 : mode === 'space' ? 60 : 72;
+    this.bpm = mode === 'batman' ? 95 : 60;
   }
 
   toggle() {
@@ -81,7 +81,10 @@ export class MusicSystem {
 
   playBeat(time) {
     if (this.mode === 'batman') { this.playBatmanBeat(time); return; }
-    if (this.mode === 'space') { this.playSpaceBeat(time); return; }
+    // All other modes use the ambient space theme
+    this.playSpaceBeat(time);
+    return;
+    // eslint-disable-next-line no-unreachable
     const scale = SCALES[this.mode] || SCALES.galaxy;
     const base = BASE_NOTES[this.mode] || 55;
     const beat = this.beat;
