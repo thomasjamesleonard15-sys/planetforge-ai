@@ -1,3 +1,5 @@
+import { speak as speakV } from './voices.js';
+
 const TITLE = 'PlanetForge AI';
 const SUBTITLE = 'Create planets. Farm. Build. Defend. Conquer.';
 
@@ -156,22 +158,54 @@ export class IntroCutscene {
       p.r = 2 + Math.random() * 7;
       p.color = colors[Math.floor(Math.random() * colors.length)];
     }
-    try {
-      const u = new SpeechSynthesisUtterance("Boom!");
-      u.pitch = 0.1; u.rate = 0.5; u.volume = 0.8;
-      speechSynthesis.speak(u);
-    } catch (_) {}
+    speakV("Boom!", { role: 'deep', pitch: 0.3, rate: 0.7, volume: 0.9 });
   }
 
   render(ctx) {
     const w = this.screenW, h = this.screenH;
-    ctx.fillStyle = '#050510';
+    const t = this.timer;
+
+    // Deep space gradient
+    const bg = ctx.createRadialGradient(w / 2, h / 2, 50, w / 2, h / 2, Math.max(w, h));
+    bg.addColorStop(0, '#0a0820');
+    bg.addColorStop(0.4, '#050510');
+    bg.addColorStop(1, '#020208');
+    ctx.fillStyle = bg;
     ctx.fillRect(0, 0, w, h);
 
+    // Nebula clouds
+    const neb1 = ctx.createRadialGradient(w * 0.25 + Math.sin(t * 0.3) * 20, h * 0.35, 30, w * 0.25, h * 0.35, 350);
+    neb1.addColorStop(0, 'rgba(110, 60, 200, 0.35)');
+    neb1.addColorStop(0.5, 'rgba(60, 20, 130, 0.15)');
+    neb1.addColorStop(1, 'rgba(40, 10, 80, 0)');
+    ctx.fillStyle = neb1;
+    ctx.fillRect(0, 0, w, h);
+
+    const neb2 = ctx.createRadialGradient(w * 0.75 - Math.cos(t * 0.4) * 25, h * 0.65, 30, w * 0.75, h * 0.65, 320);
+    neb2.addColorStop(0, 'rgba(50, 130, 220, 0.3)');
+    neb2.addColorStop(0.5, 'rgba(20, 50, 130, 0.1)');
+    neb2.addColorStop(1, 'rgba(10, 20, 60, 0)');
+    ctx.fillStyle = neb2;
+    ctx.fillRect(0, 0, w, h);
+
+    const neb3 = ctx.createRadialGradient(w * 0.55 + Math.sin(t * 0.2) * 30, h * 0.85, 30, w * 0.55, h * 0.85, 280);
+    neb3.addColorStop(0, 'rgba(200, 60, 130, 0.25)');
+    neb3.addColorStop(1, 'rgba(80, 20, 50, 0)');
+    ctx.fillStyle = neb3;
+    ctx.fillRect(0, 0, w, h);
+
+    // Stars with glow + twinkle
     for (const s of this.stars) {
+      const tw = s.a * (0.7 + Math.sin(t * 5 + s.x * 0.05) * 0.3);
+      if (s.r > 1) {
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r * 4, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${tw * 0.15})`;
+        ctx.fill();
+      }
       ctx.beginPath();
       ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(255,255,255,${s.a})`;
+      ctx.fillStyle = `rgba(255,255,255,${tw})`;
       ctx.fill();
     }
 
@@ -180,26 +214,50 @@ export class IntroCutscene {
       ctx.translate(this.asteroid.x, this.asteroid.y);
       ctx.rotate(this.asteroid.rot);
       ctx.beginPath();
-      const n = 8;
+      const n = 10;
       for (let i = 0; i <= n; i++) {
         const a = (i / n) * Math.PI * 2;
-        const r = this.asteroid.r * (0.8 + Math.sin(i * 3.7) * 0.2);
+        const r = this.asteroid.r * (0.75 + Math.sin(i * 3.7) * 0.25);
         i === 0 ? ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r) : ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
       }
       ctx.closePath();
-      ctx.fillStyle = '#665544';
+      // Shaded fill
+      const ag = ctx.createRadialGradient(-this.asteroid.r * 0.3, -this.asteroid.r * 0.3, 5, 0, 0, this.asteroid.r * 1.2);
+      ag.addColorStop(0, '#a89880');
+      ag.addColorStop(0.5, '#665544');
+      ag.addColorStop(1, '#221a10');
+      ctx.fillStyle = ag;
       ctx.fill();
-      ctx.strokeStyle = '#998877';
+      ctx.strokeStyle = '#332211';
       ctx.lineWidth = 2;
       ctx.stroke();
+      // Craters
+      for (let i = 0; i < 4; i++) {
+        const ca = i * 1.6 + 0.5;
+        const cd = this.asteroid.r * 0.45;
+        const cx = Math.cos(ca) * cd;
+        const cy = Math.sin(ca) * cd;
+        ctx.beginPath();
+        ctx.arc(cx, cy, this.asteroid.r * (0.08 + (i % 2) * 0.05), 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(20, 10, 0, 0.5)';
+        ctx.fill();
+      }
       ctx.restore();
     }
 
     for (const p of this.explosion) {
       if (p.life <= 0) continue;
-      ctx.globalAlpha = p.life / p.maxLife;
+      const f = p.life / p.maxLife;
+      // Outer glow
+      ctx.globalAlpha = f * 0.3;
       ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r * (p.life / p.maxLife), 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, p.r * f * 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = p.color;
+      ctx.fill();
+      // Core
+      ctx.globalAlpha = f;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r * f, 0, Math.PI * 2);
       ctx.fillStyle = p.color;
       ctx.fill();
     }
@@ -208,13 +266,29 @@ export class IntroCutscene {
     if (this.shipPhase === 'fly') {
       ctx.save();
       ctx.translate(this.shipX, this.shipY);
-      const tg = ctx.createRadialGradient(-16, 0, 2, -16, 0, 14);
-      tg.addColorStop(0, 'rgba(255,136,50,0.8)');
+      // Engine flame trail behind ship
+      const tg0 = ctx.createRadialGradient(-22, 0, 2, -22, 0, 32);
+      tg0.addColorStop(0, 'rgba(255,200,80,0.6)');
+      tg0.addColorStop(0.5, 'rgba(255,100,30,0.3)');
+      tg0.addColorStop(1, 'rgba(255,60,20,0)');
+      ctx.fillStyle = tg0;
+      ctx.beginPath();
+      ctx.arc(-22, 0, 32, 0, Math.PI * 2);
+      ctx.fill();
+      const tg = ctx.createRadialGradient(-18, 0, 2, -18, 0, 16);
+      tg.addColorStop(0, 'rgba(255,255,200,0.95)');
+      tg.addColorStop(0.4, 'rgba(255,180,80,0.7)');
       tg.addColorStop(1, 'rgba(255,60,20,0)');
       ctx.fillStyle = tg;
       ctx.beginPath();
-      ctx.arc(-16, 0, 14, 0, Math.PI * 2);
+      ctx.arc(-18, 0, 14 + Math.random() * 4, 0, Math.PI * 2);
       ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.beginPath();
+      ctx.arc(-16, 0, 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Ship body
       ctx.beginPath();
       ctx.moveTo(20, 0);
       ctx.lineTo(-14, -12);
@@ -223,33 +297,76 @@ export class IntroCutscene {
       ctx.lineTo(-6, 5);
       ctx.lineTo(-14, 12);
       ctx.closePath();
-      const sg = ctx.createLinearGradient(-14, 0, 20, 0);
-      sg.addColorStop(0, '#2255aa');
-      sg.addColorStop(1, '#66ccff');
+      const sg = ctx.createLinearGradient(0, -12, 0, 12);
+      sg.addColorStop(0, '#1a3a66');
+      sg.addColorStop(0.5, '#88ddff');
+      sg.addColorStop(1, '#1a3a66');
       ctx.fillStyle = sg;
       ctx.fill();
-      ctx.strokeStyle = '#88ddff';
+      ctx.strokeStyle = '#aaeeff';
       ctx.lineWidth = 1.5;
       ctx.stroke();
+      // Wing accents
+      ctx.fillStyle = '#1a2a44';
+      ctx.beginPath();
+      ctx.moveTo(-14, -12);
+      ctx.lineTo(-10, -7);
+      ctx.lineTo(-6, -5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(-14, 12);
+      ctx.lineTo(-10, 7);
+      ctx.lineTo(-6, 5);
+      ctx.closePath();
+      ctx.fill();
+      // Hull stripe
+      ctx.strokeStyle = '#ffaa44';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(18, 0);
+      ctx.lineTo(-8, 0);
+      ctx.stroke();
+      // Cockpit with halo
+      ctx.beginPath();
+      ctx.arc(8, 0, 6, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(170,238,255,0.4)';
+      ctx.fill();
       ctx.beginPath();
       ctx.arc(8, 0, 4, 0, Math.PI * 2);
-      ctx.fillStyle = '#aaeeff';
+      const cg = ctx.createRadialGradient(7, -2, 0, 8, 0, 4);
+      cg.addColorStop(0, '#ffffff');
+      cg.addColorStop(0.5, '#aaeeff');
+      cg.addColorStop(1, '#4488cc');
+      ctx.fillStyle = cg;
       ctx.fill();
       ctx.restore();
     }
 
+    // Bullets — multi-layer glow
     for (const b of this.bullets) {
       if (!b.active) continue;
+      ctx.globalAlpha = 0.15;
       ctx.beginPath();
-      ctx.arc(b.x, b.y, 3, 0, Math.PI * 2);
+      ctx.arc(b.x, b.y, 14, 0, Math.PI * 2);
       ctx.fillStyle = '#ffdd44';
       ctx.fill();
-      ctx.globalAlpha = 0.3;
+      ctx.globalAlpha = 0.4;
       ctx.beginPath();
       ctx.arc(b.x, b.y, 8, 0, Math.PI * 2);
       ctx.fillStyle = '#ffdd44';
       ctx.fill();
+      // Trail
+      ctx.globalAlpha = 0.5;
+      ctx.beginPath();
+      ctx.arc(b.x - b.vx * 0.012, b.y - b.vy * 0.012, 4, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffdd44';
+      ctx.fill();
       ctx.globalAlpha = 1;
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, 3, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
     }
 
     for (const L of this.letters) {
@@ -257,33 +374,53 @@ export class IntroCutscene {
       ctx.save();
       ctx.translate(L.x, L.y);
       ctx.rotate(L.rot);
-      ctx.font = 'bold 42px -apple-system, system-ui, sans-serif';
+      ctx.font = 'bold 48px -apple-system, system-ui, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
+      // Glow halo
+      if (L.arrived) {
+        ctx.shadowColor = '#6ee7b7';
+        ctx.shadowBlur = 20;
+      }
+      // Drop shadow
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+      ctx.fillText(L.ch, 3, 3);
+      // Main letter with gradient
+      ctx.shadowBlur = 0;
       const grd = ctx.createLinearGradient(-20, -20, 20, 20);
-      grd.addColorStop(0, '#6ee7b7');
-      grd.addColorStop(0.5, '#3b82f6');
+      grd.addColorStop(0, '#a8f0d0');
+      grd.addColorStop(0.4, '#6ee7b7');
+      grd.addColorStop(0.7, '#3b82f6');
       grd.addColorStop(1, '#a78bfa');
       ctx.fillStyle = grd;
       ctx.fillText(L.ch, 0, 0);
+      // Stroke for definition
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.lineWidth = 1;
+      ctx.strokeText(L.ch, 0, 0);
       ctx.restore();
     }
 
     if (this.subtitleAlpha > 0) {
       ctx.globalAlpha = this.subtitleAlpha;
-      ctx.font = '18px -apple-system, system-ui, sans-serif';
+      ctx.font = '20px -apple-system, system-ui, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillStyle = '#8888aa';
-      ctx.fillText(SUBTITLE, w / 2, h * 0.3 + 40);
+      ctx.fillStyle = 'rgba(0,0,0,0.8)';
+      ctx.fillText(SUBTITLE, w / 2 + 1, h * 0.3 + 51);
+      ctx.fillStyle = '#aaccee';
+      ctx.fillText(SUBTITLE, w / 2, h * 0.3 + 50);
       ctx.globalAlpha = 1;
     }
 
     if (this.showTap) {
       ctx.globalAlpha = this.tapAlpha * (0.6 + Math.sin(this.timer * 4) * 0.4);
-      ctx.font = 'bold 22px -apple-system, system-ui, sans-serif';
+      ctx.shadowColor = '#88ddff';
+      ctx.shadowBlur = 15;
+      ctx.font = 'bold 26px -apple-system, system-ui, sans-serif';
       ctx.textAlign = 'center';
       ctx.fillStyle = '#ffffff';
-      ctx.fillText('Tap to Start', w / 2, h * 0.75);
+      ctx.fillText('Tap to Start', w / 2, h * 0.78);
+      ctx.shadowBlur = 0;
       ctx.globalAlpha = 1;
     }
 
