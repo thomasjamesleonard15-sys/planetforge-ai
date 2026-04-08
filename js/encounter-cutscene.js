@@ -1,3 +1,5 @@
+import { speak as speakV } from './voices.js';
+
 export const DIALOGUES = {
   intro: [
     { speaker: 'enemy', text: 'Who are you?!', color: '#ff4444', delay: 0 },
@@ -29,16 +31,10 @@ export class EncounterCutscene {
   }
 
   speak(text, pitch, rate) {
-    try {
-      const u = new SpeechSynthesisUtterance(text);
-      u.pitch = pitch;
-      u.rate = rate;
-      u.volume = 1;
-      const voices = speechSynthesis.getVoices();
-      const v = voices.find(v => /male/i.test(v.name) && !/female/i.test(v.name)) || voices[0];
-      if (v) u.voice = v;
-      speechSynthesis.speak(u);
-    } catch (_) {}
+    // Pitch < 0.5 = batman; pitch > 1.0 = excited (joker-ish); else villain
+    if (pitch < 0.4) speakV(text, 'batman');
+    else if (pitch > 1.0) speakV(text, 'joker');
+    else speakV(text, 'villain');
   }
 
   update(dt) {

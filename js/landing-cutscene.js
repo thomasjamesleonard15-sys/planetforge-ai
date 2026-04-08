@@ -1,3 +1,5 @@
+import { speak as speakV } from './voices.js';
+
 const PHASE_DESCENT = 0;
 const PHASE_LANDED = 1;
 const PHASE_EXIT = 2;
@@ -44,16 +46,7 @@ export class LandingCutscene {
 
   sayLetsGo() {
     this.showLetsGo = 2;
-    try {
-      const u = new SpeechSynthesisUtterance("Let's go");
-      u.pitch = 0.3;
-      u.rate = 0.7;
-      u.volume = 1;
-      const voices = speechSynthesis.getVoices();
-      const deep = voices.find(v => /male/i.test(v.name) && !/female/i.test(v.name)) || voices[0];
-      if (deep) u.voice = deep;
-      speechSynthesis.speak(u);
-    } catch (_) {}
+    speakV("Let's go!", 'hero');
   }
 
   update(dt) {

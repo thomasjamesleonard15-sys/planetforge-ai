@@ -2,6 +2,7 @@ import {
   renderQTEBackground, renderVillain, renderPlayer,
   renderIntroUI, renderFightUI, renderEndUI, renderSpeechBubble,
 } from './qte-renderer.js';
+import { speak as speakV } from './voices.js';
 
 const PHASE_INTRO = 0;
 const PHASE_FIGHT = 1;
@@ -61,16 +62,7 @@ export class QTEPlanet {
   }
 
   speak(text, pitch, rate) {
-    try {
-      const u = new SpeechSynthesisUtterance(text);
-      u.pitch = pitch;
-      u.rate = rate;
-      u.volume = 1;
-      const voices = speechSynthesis.getVoices();
-      const v = voices.find(v => /male/i.test(v.name) && !/female/i.test(v.name)) || voices[0];
-      if (v) u.voice = v;
-      speechSynthesis.speak(u);
-    } catch (_) {}
+    speakV(text, { role: 'deep', pitch: pitch || 0.5, rate: rate || 0.8, volume: 1 });
   }
 
   pressY() {

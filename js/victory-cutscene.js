@@ -1,3 +1,5 @@
+import { speak as speakV } from './voices.js';
+
 const PHASE_CELEBRATE = 0;
 const PHASE_SPEECH = 1;
 const PHASE_WALK = 2;
@@ -40,16 +42,7 @@ export class VictoryCutscene {
   }
 
   speak(text, pitch, rate) {
-    try {
-      const u = new SpeechSynthesisUtterance(text);
-      u.pitch = pitch;
-      u.rate = rate;
-      u.volume = 1;
-      const voices = speechSynthesis.getVoices();
-      const v = voices.find(v => /male/i.test(v.name) && !/female/i.test(v.name)) || voices[0];
-      if (v) u.voice = v;
-      speechSynthesis.speak(u);
-    } catch (_) {}
+    speakV(text, pitch < 0.6 ? 'villain' : pitch > 1 ? 'excited' : 'hero');
   }
 
   spawnConfetti() {

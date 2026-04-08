@@ -1,3 +1,5 @@
+import { speak as speakV } from './voices.js';
+
 const PHASE_FALL = 0;
 const PHASE_CRAWL = 1;
 const PHASE_ENTER = 2;
@@ -40,16 +42,7 @@ export class DeathCutscene {
 
   sayHelp() {
     this.showHelp = 2.5;
-    try {
-      const u = new SpeechSynthesisUtterance('Help?!');
-      u.pitch = 0.4;
-      u.rate = 0.8;
-      u.volume = 1;
-      const voices = speechSynthesis.getVoices();
-      const deep = voices.find(v => /male/i.test(v.name) && !/female/i.test(v.name)) || voices[0];
-      if (deep) u.voice = deep;
-      speechSynthesis.speak(u);
-    } catch (_) {}
+    speakV('Help!', { role: 'male', pitch: 1.3, rate: 1.1, volume: 1 });
   }
 
   update(dt) {

@@ -5,6 +5,7 @@ import { ProjectileSystem } from './projectiles.js';
 import { ParticleSystem } from './particles.js';
 import { HUD } from './hud.js';
 import { renderSkinDetail } from './skins.js';
+import { speak as speakV } from './voices.js';
 
 const BAT_WEAPONS = [
   { name: 'Batarang', damage: 15, fireRate: 0.3, bulletSpeed: 700, spread: 0.04, color: '#ffdd44' },
@@ -169,11 +170,8 @@ export class BatmanPlanet {
     this.bossActive = true;
     this.bossAnnounce = boss.msg;
     this.bossAnnounceTimer = 3;
-    try {
-      const u = new SpeechSynthesisUtterance(boss.msg);
-      u.pitch = 0.3; u.rate = 0.6;
-      speechSynthesis.speak(u);
-    } catch (_) {}
+    const villainProfile = boss.name.includes('JOKER') ? 'joker' : 'villain';
+    speakV(boss.msg, villainProfile);
   }
 
   spawnAllBosses() {
@@ -184,11 +182,7 @@ export class BatmanPlanet {
     for (const boss of BOSSES) {
       this.spawnEnemy(boss, this.wave * 5);
     }
-    try {
-      const u = new SpeechSynthesisUtterance("They're all here! Every last one of them!");
-      u.pitch = 0.2; u.rate = 0.6;
-      speechSynthesis.speak(u);
-    } catch (_) {}
+    speakV("They're all here! Every last one of them!", 'batman');
   }
 
   activeEnemyCount() {

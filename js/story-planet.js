@@ -1,6 +1,7 @@
 import { CharacterSheet } from './story-char.js';
 import { DMTools } from './dm-tools.js';
 import { multiplayer } from './multiplayer.js';
+import { speak as speakV } from './voices.js';
 
 const FADE_SPEED = 1.5;
 
@@ -64,11 +65,7 @@ export class StoryPlanet {
   }
 
   speak(text, pitch, rate, vol) {
-    try {
-      const u = new SpeechSynthesisUtterance(text);
-      u.pitch = pitch; u.rate = rate; u.volume = vol || 1;
-      speechSynthesis.speak(u);
-    } catch (_) {}
+    speakV(text, { role: 'high', pitch: pitch || 0.7, rate: rate || 0.85, volume: vol || 1 });
   }
 
   npcVoice(text) {
@@ -108,9 +105,13 @@ export class StoryPlanet {
       this.spoken.add(text);
       if (speaker === '???') {
         const v = this.npcVoice(text);
-        this.speak(text, v.pitch, v.rate);
+        speakV(text, { role: 'mysterious' === 'mysterious' ? 'high' : 'female', pitch: v.pitch, rate: v.rate, volume: 0.95 });
+      } else if (speaker === 'You') {
+        speakV(text, 'hero');
+      } else if (speaker === 'DM') {
+        speakV(text, 'narrator');
       } else {
-        this.speak(text, 0.8, 0.8);
+        speakV(text, 'npc');
       }
     }
   }
