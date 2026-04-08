@@ -163,19 +163,21 @@ export class GalaxyView {
 
     for (let i = 0; i < this.planets.length; i++) {
       const p = this.planets[i];
-      const orbitR = 120 + i * (baseRadius * 1.2);
-      const angle = this.time * (0.15 - i * 0.02) + i * 1.5;
-      p.x = cx + Math.cos(angle) * orbitR;
-      p.y = cy + Math.sin(angle) * orbitR * 0.5;
-      p.radius = baseRadius * (0.6 + i * 0.1);
+      if (!this.use3D) {
+        const orbitR = 120 + i * (baseRadius * 1.2);
+        const angle = this.time * (0.15 - i * 0.02) + i * 1.5;
+        p.x = cx + Math.cos(angle) * orbitR;
+        p.y = cy + Math.sin(angle) * orbitR * 0.5;
+        p.radius = baseRadius * (0.6 + i * 0.1);
 
-      ctx.beginPath();
-      ctx.ellipse(cx, cy, orbitR, orbitR * 0.5, 0, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(100, 120, 255, 0.1)';
-      ctx.lineWidth = 1;
-      ctx.stroke();
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, orbitR, orbitR * 0.5, 0, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(100, 120, 255, 0.1)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
 
-      p.render(ctx);
+        p.render(ctx);
+      }
 
       ctx.font = '16px -apple-system, system-ui, sans-serif';
       ctx.textAlign = 'center';

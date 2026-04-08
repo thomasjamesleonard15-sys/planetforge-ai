@@ -22,6 +22,7 @@ import { BatmanPlanet } from './batman-planet.js';
 import { CoopBoss } from './coop-boss.js';
 import { StoryPlanet } from './story-planet.js';
 import { Space3D } from './space-3d.js';
+import { Galaxy3D } from './galaxy-3d.js';
 import { TaskList } from './task-list.js';
 import { RacingGame } from './racing-game.js';
 
@@ -44,6 +45,7 @@ export class Game {
     this.coop = null;
     this.story = null;
     this.space3D = null;
+    this.galaxy3D = null;
     this.cameFromSpace = false;
     this.earnedSoldiers = 0;
     this.cutscene = null;
@@ -84,7 +86,13 @@ export class Game {
   start() {
     const threeCanvas = document.getElementById('three-canvas');
     if (threeCanvas && !this.space3D) {
-      try { this.space3D = new Space3D(threeCanvas); this.space3D.resize(this.width, this.height); } catch (e) { console.error('3D init failed', e); }
+      try {
+        this.space3D = new Space3D(threeCanvas);
+        this.space3D.resize(this.width, this.height);
+        this.galaxy3D = new Galaxy3D(this.space3D.renderer, threeCanvas);
+        this.galaxy3D.resize(this.width, this.height);
+        this.galaxy3D.setupPlanets(this.galaxy.planets);
+      } catch (e) { console.error('3D init failed', e); }
     }
     this.intro = new IntroCutscene(this.width, this.height);
     this.state = STATE.TITLE;
@@ -111,6 +119,7 @@ export class Game {
     if (this.surface) this.surface.resize(w, h);
     if (this.space) this.space.resize(w, h);
     if (this.space3D) this.space3D.resize(w, h);
+    if (this.galaxy3D) this.galaxy3D.resize(w, h);
   }
 
   handleTap(x, y) {
@@ -738,12 +747,17 @@ export class Game {
     const ctx = this.ctx;
     ctx.clearRect(0, 0, this.width, this.height);
 
-    // 3D space layer
+    // 3D layer
     if (this.space3D) {
       if (this.state === STATE.SPACE && this.space && !this.space.fpsMode) {
         this.space3D.show();
         this.space3D.syncFromView(this.space);
         this.space3D.render();
+      } else if (this.state === STATE.GALAXY && this.galaxy3D) {
+        this.galaxy3D.show();
+        this.galaxy3D.syncFromView(this.galaxy, this.width, this.height);
+        this.galaxy3D.renderer.render(this.galaxy3D.scene, this.galaxy3D.camera);
+        this.galaxy.use3D = true;
       } else {
         this.space3D.hide();
       }
@@ -760,7 +774,7 @@ export class Game {
     }
 
     if (this.state === STATE.GALAXY) {
-      this.renderStars(ctx);
+      if (!this.galaxy3D) this.renderStars(ctx);
       this.galaxy.render(ctx, this.width, this.height);
       this.tasks.render(ctx, this.width, this.height);
     } else if (this.state === STATE.BLACKHOLE) {
