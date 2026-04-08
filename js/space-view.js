@@ -535,7 +535,7 @@ export class SpaceView {
   render(ctx) {
     if (this.fpsMode) {
       renderSpaceFPS(ctx, this);
-    } else {
+    } else if (!this.use3D) {
       renderSpaceWorld(ctx, this);
       renderShip(ctx, this);
     }
