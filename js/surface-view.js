@@ -13,6 +13,7 @@ import { DayNightCycle } from './day-night.js';
 import { EncounterCutscene } from './encounter-cutscene.js';
 import { VictoryCutscene } from './victory-cutscene.js';
 import { renderFPS } from './fps-renderer.js';
+import { WildlifeSystem } from './wildlife.js';
 
 export class SurfaceView {
   constructor(isHome = true) {
@@ -62,6 +63,7 @@ export class SurfaceView {
       });
     }
     this.grainSeed = 0;
+    this.wildlife = new WildlifeSystem();
     // Rain drops
     this.rainDrops = [];
     for (let i = 0; i < 120; i++) {
@@ -115,6 +117,8 @@ export class SurfaceView {
         return;
       }
     }
+    // Scan button
+    if (this.wildlife.handleScanTap(sx, sy)) return;
     // FPS toggle button
     const fb = this.fpsBtnRect;
     if (fb.w > 0 && sx >= fb.x && sx <= fb.x + fb.w && sy >= fb.y && sy <= fb.y + fb.h) {
@@ -472,6 +476,7 @@ export class SurfaceView {
         this.hud.showMessage('Full health restored!');
       }
     }
+    this.wildlife.update(dt, this.player);
     this.turretAI.update(dt, this.tileMap, this.enemies, this.projectiles, this.dayNight.nightMonsters);
     this.dayNight.update(dt, this.player, this.particles);
     this.soldiers.update(dt, this.player.x, this.player.y, this.enemies, this.projectiles, this.dayNight.nightMonsters);
@@ -584,6 +589,7 @@ export class SurfaceView {
       }
       ctx.globalCompositeOperation = 'source-over';
 
+      this.wildlife.render(ctx, this.camera, this.player);
       this.projectiles.render(ctx, this.camera);
       this.particles.render(ctx, this.camera);
       this.dayNight.render(ctx, this.camera, this.screenW, this.screenH);
@@ -698,6 +704,7 @@ export class SurfaceView {
     ctx.fillText('👤', btnX + btnSize / 2, skinBtnY + btnSize / 2 + 8);
     ctx.textAlign = 'left';
     this.hud.render(ctx, this.screenW, this.screenH, this.resources, this.player);
+    this.wildlife.renderHUD(ctx, this.screenW, this.screenH);
     // Sleep button
     if (this.dayNight.canSleep(this.player.x, this.player.y, this.tileMap)) {
       const sbw = 140, sbh = 44;

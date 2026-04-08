@@ -321,6 +321,10 @@ export class Game {
     this.state = STATE.SURFACE;
     music.setMode(isHome ? 'surface' : 'battle');
     if (isHome) music.playHomeJingle();
+    // Spawn wildlife on non-home, non-gas planets
+    if (!isHome && !isGas && this.surface.wildlife) {
+      this.surface.wildlife.spawn(planetName);
+    }
     this.tasks.complete('land1');
     if (this.multiplayerActive && !multiplayer.isHost && this.surface.enemies) {
       this.surface.enemies.syncedByHost = true;
