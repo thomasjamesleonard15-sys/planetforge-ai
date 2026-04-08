@@ -80,74 +80,159 @@ export class Player {
     const t = Date.now() / 150;
     const walk = Math.sin(t) * 2;
 
-    // Cast shadow — flattened body silhouette stretched to lower-right
-    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    // Cast shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
     ctx.beginPath();
-    ctx.ellipse(s.x + 8, s.y + r + 20, r * 1.6, r * 0.4, -0.3, 0, Math.PI * 2);
+    ctx.ellipse(s.x + 10, s.y + r + 22, r * 1.7, r * 0.45, -0.3, 0, Math.PI * 2);
     ctx.fill();
-    // Darker core under feet
     ctx.fillStyle = 'rgba(0,0,0,0.4)';
     ctx.beginPath();
-    ctx.ellipse(s.x, s.y + r + 18, r * 0.7, r * 0.2, 0, 0, Math.PI * 2);
+    ctx.ellipse(s.x, s.y + r + 20, r * 0.75, r * 0.22, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Legs
-    const legColor = this.darken(sk.body2, 0.2);
-    ctx.fillStyle = legColor;
-    ctx.fillRect(s.x - 6, s.y + r + 4, 4, 12 + walk);
-    ctx.fillRect(s.x + 2, s.y + r + 4, 4, 12 - walk);
-    // Boots
-    ctx.fillStyle = '#222';
-    ctx.fillRect(s.x - 7, s.y + r + 14 + walk, 6, 4);
-    ctx.fillRect(s.x + 1, s.y + r + 14 - walk, 6, 4);
+    // Legs with knee/thigh shading
+    const legDark = this.darken(sk.body2, 0.3);
+    const legMid = this.darken(sk.body1, 0.2);
+    const legLeft = { x: s.x - 6, wob: walk };
+    const legRight = { x: s.x + 2, wob: -walk };
+    for (const lg of [legLeft, legRight]) {
+      // Thigh
+      const lgrad = ctx.createLinearGradient(lg.x, s.y + r + 4, lg.x + 4, s.y + r + 4);
+      lgrad.addColorStop(0, legDark);
+      lgrad.addColorStop(0.5, legMid);
+      lgrad.addColorStop(1, legDark);
+      ctx.fillStyle = lgrad;
+      ctx.fillRect(lg.x, s.y + r + 4, 4, 8);
+      // Shin
+      ctx.fillStyle = legDark;
+      ctx.fillRect(lg.x, s.y + r + 12 + lg.wob, 4, 6);
+      // Knee pad
+      ctx.fillStyle = this.darken(sk.body2, 0.5);
+      ctx.fillRect(lg.x - 1, s.y + r + 11, 6, 3);
+    }
+    // Boots with gradient
+    for (const lg of [legLeft, legRight]) {
+      const bx = lg.x - 1, by = s.y + r + 17 + lg.wob;
+      ctx.fillStyle = '#111';
+      ctx.fillRect(bx, by, 6, 5);
+      ctx.fillStyle = '#333';
+      ctx.fillRect(bx, by, 6, 1);
+    }
 
-    // Detail behind body (cape, etc)
+    // Cape behind
     if (sk.detail === 'cape') {
       renderSkinDetail(ctx, s.x, s.y, r, sk);
     }
 
-    // Torso — chest armor
+    // Torso — armored chest plate with curve
     const torsoY = s.y + r - 2;
     const torsoG = ctx.createLinearGradient(s.x - r, torsoY, s.x + r, torsoY);
-    torsoG.addColorStop(0, this.darken(sk.body1, 0.3));
-    torsoG.addColorStop(0.5, sk.body1);
-    torsoG.addColorStop(1, this.darken(sk.body1, 0.4));
+    torsoG.addColorStop(0, this.darken(sk.body1, 0.4));
+    torsoG.addColorStop(0.3, sk.body1);
+    torsoG.addColorStop(0.5, this.lighten(sk.body1, 0.2));
+    torsoG.addColorStop(0.7, sk.body1);
+    torsoG.addColorStop(1, this.darken(sk.body1, 0.5));
     ctx.fillStyle = torsoG;
     ctx.beginPath();
-    ctx.moveTo(s.x - r * 0.85, torsoY);
-    ctx.lineTo(s.x - r * 0.95, torsoY + 14);
+    ctx.moveTo(s.x - r * 0.88, torsoY);
+    ctx.quadraticCurveTo(s.x - r * 1.0, torsoY + 7, s.x - r * 0.95, torsoY + 14);
     ctx.lineTo(s.x + r * 0.95, torsoY + 14);
-    ctx.lineTo(s.x + r * 0.85, torsoY);
+    ctx.quadraticCurveTo(s.x + r * 1.0, torsoY + 7, s.x + r * 0.88, torsoY);
     ctx.closePath();
     ctx.fill();
-    ctx.strokeStyle = this.darken(sk.body2, 0.5);
+    ctx.strokeStyle = this.darken(sk.body2, 0.6);
     ctx.lineWidth = 1.5;
     ctx.stroke();
-    // Chest detail
-    ctx.fillStyle = sk.visor;
-    ctx.fillRect(s.x - 2, torsoY + 2, 4, 4);
-    ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+    // Chest plate seam
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(s.x, torsoY);
-    ctx.lineTo(s.x, torsoY + 14);
+    ctx.moveTo(s.x, torsoY + 1);
+    ctx.lineTo(s.x, torsoY + 13);
     ctx.stroke();
+    // Chest energy core
+    ctx.fillStyle = sk.visor;
+    ctx.beginPath();
+    ctx.arc(s.x, torsoY + 5, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    ctx.beginPath();
+    ctx.arc(s.x - 0.5, torsoY + 4.5, 1, 0, Math.PI * 2);
+    ctx.fill();
+    // Belt
+    ctx.fillStyle = '#222';
+    ctx.fillRect(s.x - r * 0.9, torsoY + 10, r * 1.8, 3);
+    ctx.fillStyle = '#ffaa44';
+    ctx.fillRect(s.x - 2, torsoY + 10, 4, 3);
 
-    // Arms
+    // Arms with segments
+    const armY = torsoY + 4;
+    // Left arm
+    const lArmX = s.x - r * 0.95 - 3;
     ctx.fillStyle = sk.body1;
     ctx.beginPath();
-    ctx.arc(s.x - r * 0.95 - 2, torsoY + 6 - walk * 0.5, 4, 0, Math.PI * 2);
-    ctx.arc(s.x + r * 0.95 + 2, torsoY + 6 + walk * 0.5, 4, 0, Math.PI * 2);
+    ctx.arc(lArmX, armY + 2 - walk * 0.5, 4.5, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = this.darken(sk.body2, 0.5);
     ctx.lineWidth = 1;
     ctx.stroke();
-    // Hands
+    // Forearm
+    ctx.fillStyle = this.darken(sk.body1, 0.15);
+    ctx.fillRect(lArmX - 3, armY + 4 - walk * 0.5, 6, 6);
+    // Hand
     ctx.fillStyle = '#eecc99';
     ctx.beginPath();
-    ctx.arc(s.x - r * 0.95 - 2, torsoY + 11 - walk * 0.5, 2.5, 0, Math.PI * 2);
-    ctx.arc(s.x + r * 0.95 + 2, torsoY + 11 + walk * 0.5, 2.5, 0, Math.PI * 2);
+    ctx.arc(lArmX, armY + 12 - walk * 0.5, 3, 0, Math.PI * 2);
     ctx.fill();
+    ctx.strokeStyle = '#775533';
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+
+    // Right arm — holds weapon
+    const rArmX = s.x + r * 0.95 + 3;
+    ctx.fillStyle = sk.body1;
+    ctx.beginPath();
+    ctx.arc(rArmX, armY + 2 + walk * 0.5, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = this.darken(sk.body2, 0.5);
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = this.darken(sk.body1, 0.15);
+    ctx.fillRect(rArmX - 3, armY + 4 + walk * 0.5, 6, 6);
+    ctx.fillStyle = '#eecc99';
+    ctx.beginPath();
+    ctx.arc(rArmX, armY + 12 + walk * 0.5, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#775533';
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+
+    // Weapon held in right hand
+    const gunX = rArmX + 3;
+    const gunY = armY + 10 + walk * 0.5;
+    const weaponColor = this.weapon.color;
+    // Gun body
+    ctx.fillStyle = '#222';
+    ctx.fillRect(gunX, gunY - 1, 10, 4);
+    ctx.fillStyle = '#555';
+    ctx.fillRect(gunX, gunY - 1, 10, 1);
+    // Barrel tip
+    ctx.fillStyle = '#111';
+    ctx.fillRect(gunX + 9, gunY, 3, 2);
+    // Weapon accent color (matches weapon color)
+    ctx.fillStyle = weaponColor;
+    ctx.fillRect(gunX + 2, gunY, 3, 2);
+    // Muzzle flash when firing
+    if (this.fireCooldown > this.weapon.fireRate * 0.7) {
+      const flashG = ctx.createRadialGradient(gunX + 12, gunY + 1, 0, gunX + 12, gunY + 1, 8);
+      flashG.addColorStop(0, 'rgba(255,255,200,1)');
+      flashG.addColorStop(0.3, 'rgba(255,200,80,0.8)');
+      flashG.addColorStop(1, 'rgba(255,100,0,0)');
+      ctx.fillStyle = flashG;
+      ctx.beginPath();
+      ctx.arc(gunX + 12, gunY + 1, 8, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     // Head sphere with strong shading
     ctx.beginPath();
@@ -172,20 +257,38 @@ export class Player {
 
     // Visor — bigger, more reflective
     ctx.beginPath();
-    ctx.ellipse(s.x, s.y - 2, r * 0.55, r * 0.4, 0, 0, Math.PI * 2);
+    ctx.ellipse(s.x, s.y - 2, r * 0.6, r * 0.42, 0, 0, Math.PI * 2);
     const visGrad = ctx.createLinearGradient(s.x, s.y - r * 0.4, s.x, s.y + r * 0.4);
     visGrad.addColorStop(0, this.lighten(sk.visor, 0.5));
-    visGrad.addColorStop(0.5, sk.visor);
-    visGrad.addColorStop(1, this.darken(sk.visor, 0.5));
+    visGrad.addColorStop(0.4, sk.visor);
+    visGrad.addColorStop(0.7, this.darken(sk.visor, 0.3));
+    visGrad.addColorStop(1, this.darken(sk.visor, 0.6));
     ctx.fillStyle = visGrad;
     ctx.fill();
-    ctx.strokeStyle = 'rgba(0,0,0,0.4)';
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+    ctx.lineWidth = 1.5;
     ctx.stroke();
-    // Visor highlight
+    // Face behind visor (subtle glow)
+    ctx.fillStyle = 'rgba(255,200,150,0.25)';
     ctx.beginPath();
-    ctx.ellipse(s.x - r * 0.2, s.y - r * 0.2, r * 0.15, r * 0.08, -0.5, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.ellipse(s.x, s.y - 1, r * 0.35, r * 0.22, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // HUD lines on visor
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(s.x - r * 0.5, s.y - 2);
+    ctx.lineTo(s.x + r * 0.5, s.y - 2);
+    ctx.stroke();
+    // Main visor highlight
+    ctx.beginPath();
+    ctx.ellipse(s.x - r * 0.22, s.y - r * 0.22, r * 0.18, r * 0.09, -0.5, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.fill();
+    // Small secondary highlight
+    ctx.beginPath();
+    ctx.arc(s.x + r * 0.3, s.y + r * 0.05, 1.5, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
     ctx.fill();
 
     // Detail on top of body

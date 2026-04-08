@@ -909,8 +909,6 @@ export class Game {
       this.tutorial.render(ctx, this.width, this.height);
     }
 
-    // Gamepad debug overlay (always visible for now)
-    this.renderGamepadDebug(ctx);
   }
 
   renderBackButton(ctx) {
