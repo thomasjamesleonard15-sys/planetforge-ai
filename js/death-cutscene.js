@@ -150,32 +150,60 @@ export class DeathCutscene {
     ctx.save();
     ctx.translate(shakeX, shakeY);
 
-    // Background
+    // Background — apocalyptic red sunset
     const bg = ctx.createLinearGradient(0, 0, 0, h);
-    bg.addColorStop(0, '#0a0a2a');
-    bg.addColorStop(0.4, '#1a1a3a');
-    bg.addColorStop(0.65, '#2a1010');
-    bg.addColorStop(1, '#3a2e1f');
+    bg.addColorStop(0, '#080020');
+    bg.addColorStop(0.3, '#3a0a3a');
+    bg.addColorStop(0.55, '#7a2020');
+    bg.addColorStop(0.62, '#aa3010');
+    bg.addColorStop(0.65, '#3a1010');
+    bg.addColorStop(1, '#1a0808');
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, w, h);
 
-    // Stars
+    // Red nebula glow
+    const neb = ctx.createRadialGradient(w * 0.5, h * 0.3, 20, w * 0.5, h * 0.3, 350);
+    neb.addColorStop(0, 'rgba(200, 50, 50, 0.3)');
+    neb.addColorStop(1, 'rgba(80, 0, 0, 0)');
+    ctx.fillStyle = neb;
+    ctx.fillRect(0, 0, w, h);
+
+    // Stars with glow
     for (const s of this.stars) {
+      if (s.r > 0.8) {
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r * 3, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,200,200,${s.a * 0.15})`;
+        ctx.fill();
+      }
       ctx.beginPath();
       ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(255,255,255,${s.a})`;
+      ctx.fillStyle = `rgba(255,220,220,${s.a})`;
       ctx.fill();
     }
 
-    // Red atmosphere tint
-    ctx.fillStyle = 'rgba(80, 0, 0, 0.15)';
-    ctx.fillRect(0, 0, w, h);
-
-    // Ground
+    // Distant mountains
     const groundY = h * 0.65;
-    ctx.fillStyle = '#3a2e1f';
+    ctx.fillStyle = '#1a0508';
+    ctx.beginPath();
+    ctx.moveTo(0, groundY);
+    for (let i = 0; i <= 10; i++) {
+      const mx = (i / 10) * w;
+      const my = groundY - 25 - Math.abs(Math.sin(i * 1.7)) * 35;
+      ctx.lineTo(mx, my);
+    }
+    ctx.lineTo(w, groundY);
+    ctx.closePath();
+    ctx.fill();
+
+    // Ground with shading
+    const gg = ctx.createLinearGradient(0, groundY, 0, h);
+    gg.addColorStop(0, '#5a2818');
+    gg.addColorStop(0.3, '#3a1810');
+    gg.addColorStop(1, '#1a0808');
+    ctx.fillStyle = gg;
     ctx.fillRect(0, groundY, w, h - groundY);
-    ctx.strokeStyle = '#5a4a30';
+    ctx.strokeStyle = '#7a3018';
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(0, groundY); ctx.lineTo(w, groundY);

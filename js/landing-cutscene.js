@@ -140,28 +140,70 @@ export class LandingCutscene {
   render(ctx) {
     const w = this.screenW, h = this.screenH;
 
-    // Background — planet surface gradient
+    // Background — sky gradient with sunset
     const bg = ctx.createLinearGradient(0, 0, 0, h);
-    bg.addColorStop(0, '#0a0a2a');
-    bg.addColorStop(0.4, '#1a1a3a');
-    bg.addColorStop(0.65, '#2a1a1a');
-    bg.addColorStop(1, '#3a2e1f');
+    bg.addColorStop(0, '#050518');
+    bg.addColorStop(0.3, '#1a1545');
+    bg.addColorStop(0.55, '#5a2a4a');
+    bg.addColorStop(0.62, '#a04030');
+    bg.addColorStop(0.65, '#3a2018');
+    bg.addColorStop(1, '#1a0f08');
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, w, h);
 
-    // Stars
+    // Distant nebula glow
+    const neb = ctx.createRadialGradient(w * 0.25, h * 0.2, 20, w * 0.25, h * 0.2, 250);
+    neb.addColorStop(0, 'rgba(150, 80, 200, 0.3)');
+    neb.addColorStop(1, 'rgba(80, 30, 120, 0)');
+    ctx.fillStyle = neb;
+    ctx.fillRect(0, 0, w, h);
+
+    // Stars with glow
     for (const s of this.stars) {
+      if (s.r > 0.8) {
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r * 3, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${s.a * 0.15})`;
+        ctx.fill();
+      }
       ctx.beginPath();
       ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
       ctx.fillStyle = `rgba(255,255,255,${s.a})`;
       ctx.fill();
     }
 
-    // Ground line
+    // Distant mountains silhouette
     const groundY = h * 0.65;
-    ctx.fillStyle = '#3a2e1f';
+    ctx.fillStyle = '#1a0f1a';
+    ctx.beginPath();
+    ctx.moveTo(0, groundY);
+    for (let i = 0; i <= 10; i++) {
+      const mx = (i / 10) * w;
+      const my = groundY - 20 - Math.abs(Math.sin(i * 1.7)) * 30;
+      ctx.lineTo(mx, my);
+    }
+    ctx.lineTo(w, groundY);
+    ctx.closePath();
+    ctx.fill();
+
+    // Ground with shaded gradient
+    const gg = ctx.createLinearGradient(0, groundY, 0, h);
+    gg.addColorStop(0, '#5a3a20');
+    gg.addColorStop(0.3, '#3a2a18');
+    gg.addColorStop(1, '#1a0f08');
+    ctx.fillStyle = gg;
     ctx.fillRect(0, groundY, w, h - groundY);
-    ctx.strokeStyle = '#5a4a30';
+
+    // Ground texture lines
+    ctx.strokeStyle = 'rgba(80, 50, 30, 0.4)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 8; i++) {
+      ctx.beginPath();
+      ctx.moveTo(0, groundY + 10 + i * 20);
+      ctx.lineTo(w, groundY + 10 + i * 20);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = '#7a5a35';
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(0, groundY);
@@ -184,39 +226,87 @@ export class LandingCutscene {
     ctx.rotate(this.shipAngle);
     const ss = 2.5;
 
-    // Engine glow during descent
+    // Engine glow during descent — multi-layer
     if (this.phase === PHASE_DESCENT) {
-      const g = ctx.createRadialGradient(0, 28 * ss, 2, 0, 28 * ss, 20);
-      g.addColorStop(0, 'rgba(255,136,50,0.8)');
+      const g0 = ctx.createRadialGradient(0, 32 * ss, 2, 0, 32 * ss, 50);
+      g0.addColorStop(0, 'rgba(255,200,80,0.6)');
+      g0.addColorStop(0.5, 'rgba(255,100,30,0.3)');
+      g0.addColorStop(1, 'rgba(255,60,20,0)');
+      ctx.fillStyle = g0;
+      ctx.beginPath();
+      ctx.arc(0, 32 * ss, 50, 0, Math.PI * 2);
+      ctx.fill();
+      const g = ctx.createRadialGradient(0, 28 * ss, 2, 0, 28 * ss, 24);
+      g.addColorStop(0, 'rgba(255,255,200,0.95)');
+      g.addColorStop(0.4, 'rgba(255,180,80,0.7)');
       g.addColorStop(1, 'rgba(255,60,20,0)');
       ctx.fillStyle = g;
       ctx.beginPath();
-      ctx.arc(0, 28 * ss, 20, 0, Math.PI * 2);
+      ctx.arc(0, 28 * ss + Math.random() * 4, 22 + Math.random() * 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.beginPath();
+      ctx.arc(0, 26 * ss, 6, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    // Ship body (scaled up)
+    // Ship body — metallic with stripe
     ctx.beginPath();
-    ctx.moveTo(0, -20 * ss);
-    ctx.lineTo(-14 * ss, 16 * ss);
+    ctx.moveTo(0, -22 * ss);
+    ctx.lineTo(-15 * ss, 16 * ss);
     ctx.lineTo(-6 * ss, 10 * ss);
     ctx.lineTo(0, 14 * ss);
     ctx.lineTo(6 * ss, 10 * ss);
-    ctx.lineTo(14 * ss, 16 * ss);
+    ctx.lineTo(15 * ss, 16 * ss);
     ctx.closePath();
-    const grad = ctx.createLinearGradient(0, -20 * ss, 0, 16 * ss);
-    grad.addColorStop(0, '#66ccff');
-    grad.addColorStop(1, '#2255aa');
+    const grad = ctx.createLinearGradient(-15 * ss, 0, 15 * ss, 0);
+    grad.addColorStop(0, '#1a3a66');
+    grad.addColorStop(0.4, '#66ccff');
+    grad.addColorStop(0.6, '#88ddff');
+    grad.addColorStop(1, '#1a3a66');
     ctx.fillStyle = grad;
     ctx.fill();
-    ctx.strokeStyle = '#88ddff';
+    ctx.strokeStyle = '#aaeeff';
     ctx.lineWidth = 2;
     ctx.stroke();
+    // Wing accents
+    ctx.fillStyle = '#1a2a44';
+    ctx.beginPath();
+    ctx.moveTo(-12 * ss, 12 * ss);
+    ctx.lineTo(-15 * ss, 16 * ss);
+    ctx.lineTo(-8 * ss, 14 * ss);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(12 * ss, 12 * ss);
+    ctx.lineTo(15 * ss, 16 * ss);
+    ctx.lineTo(8 * ss, 14 * ss);
+    ctx.closePath();
+    ctx.fill();
+    // Hull stripe
+    ctx.strokeStyle = '#ffaa44';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, -18 * ss);
+    ctx.lineTo(0, 8 * ss);
+    ctx.stroke();
 
-    // Cockpit
+    // Cockpit with halo
+    ctx.beginPath();
+    ctx.arc(0, -6 * ss, 9, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(170,238,255,0.4)';
+    ctx.fill();
     ctx.beginPath();
     ctx.arc(0, -6 * ss, 6, 0, Math.PI * 2);
-    ctx.fillStyle = '#aaeeff';
+    const cg = ctx.createRadialGradient(-2, -8 * ss, 0, 0, -6 * ss, 6);
+    cg.addColorStop(0, '#ffffff');
+    cg.addColorStop(0.5, '#aaeeff');
+    cg.addColorStop(1, '#4488cc');
+    ctx.fillStyle = cg;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(-2, -8 * ss, 1.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
     ctx.fill();
 
     // Landing legs (after landing)
@@ -231,20 +321,63 @@ export class LandingCutscene {
 
     ctx.restore();
 
-    // Player character exiting
+    // Player character exiting — full body
     if (this.playerAlpha > 0) {
       ctx.globalAlpha = this.playerAlpha;
+      const px = this.playerX, py = this.playerY;
+      const r = 12;
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
       ctx.beginPath();
-      ctx.arc(this.playerX, this.playerY, 12, 0, Math.PI * 2);
-      const pg = ctx.createRadialGradient(this.playerX - 2, this.playerY - 2, 1, this.playerX, this.playerY, 12);
-      pg.addColorStop(0, '#66ccff');
+      ctx.ellipse(px, py + r + 18, r * 0.9, r * 0.3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Legs
+      ctx.fillStyle = '#1a3a66';
+      ctx.fillRect(px - 5, py + r + 4, 4, 12);
+      ctx.fillRect(px + 1, py + r + 4, 4, 12);
+      ctx.fillStyle = '#222';
+      ctx.fillRect(px - 6, py + r + 14, 5, 4);
+      ctx.fillRect(px + 1, py + r + 14, 5, 4);
+      // Torso
+      ctx.fillStyle = '#3388cc';
+      ctx.beginPath();
+      ctx.moveTo(px - r * 0.85, py + r - 2);
+      ctx.lineTo(px - r * 0.95, py + r + 12);
+      ctx.lineTo(px + r * 0.95, py + r + 12);
+      ctx.lineTo(px + r * 0.85, py + r - 2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#1a3a66';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.fillStyle = '#aaeeff';
+      ctx.fillRect(px - 2, py + r, 4, 4);
+      // Arms
+      ctx.fillStyle = '#3388cc';
+      ctx.beginPath();
+      ctx.arc(px - r * 0.95 - 2, py + r + 4, 4, 0, Math.PI * 2);
+      ctx.arc(px + r * 0.95 + 2, py + r + 4, 4, 0, Math.PI * 2);
+      ctx.fill();
+      // Head
+      ctx.beginPath();
+      ctx.arc(px, py, r, 0, Math.PI * 2);
+      const pg = ctx.createRadialGradient(px - 4, py - 4, 1, px, py, r);
+      pg.addColorStop(0, '#88ddff');
+      pg.addColorStop(0.5, '#66ccff');
       pg.addColorStop(1, '#2266aa');
       ctx.fillStyle = pg;
       ctx.fill();
+      ctx.strokeStyle = '#1a3a66';
+      ctx.lineWidth = 1;
+      ctx.stroke();
       // Visor
       ctx.beginPath();
-      ctx.arc(this.playerX, this.playerY - 3, 4, 0, Math.PI * 2);
-      ctx.fillStyle = '#aaeeff';
+      ctx.ellipse(px, py - 2, 5, 4, 0, 0, Math.PI * 2);
+      const vg = ctx.createLinearGradient(px, py - 5, px, py + 2);
+      vg.addColorStop(0, '#ffffff');
+      vg.addColorStop(0.5, '#aaeeff');
+      vg.addColorStop(1, '#4488cc');
+      ctx.fillStyle = vg;
       ctx.fill();
       ctx.globalAlpha = 1;
     }

@@ -157,25 +157,57 @@ export class VictoryCutscene {
   render(ctx) {
     const w = this.screenW, h = this.screenH;
 
-    // Background
+    // Background — triumphant golden sunrise
     const bg = ctx.createLinearGradient(0, 0, 0, h);
-    bg.addColorStop(0, '#0a0a2a');
-    bg.addColorStop(0.4, '#1a1a3a');
-    bg.addColorStop(0.65, '#1a2a1a');
-    bg.addColorStop(1, '#3a2e1f');
+    bg.addColorStop(0, '#050530');
+    bg.addColorStop(0.3, '#2a3a7a');
+    bg.addColorStop(0.55, '#88aa88');
+    bg.addColorStop(0.62, '#ffcc55');
+    bg.addColorStop(0.65, '#3a4a25');
+    bg.addColorStop(1, '#1a2010');
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, w, h);
 
+    // Golden glow
+    const neb = ctx.createRadialGradient(w * 0.5, h * 0.5, 30, w * 0.5, h * 0.5, 400);
+    neb.addColorStop(0, 'rgba(255, 220, 100, 0.3)');
+    neb.addColorStop(1, 'rgba(255, 200, 50, 0)');
+    ctx.fillStyle = neb;
+    ctx.fillRect(0, 0, w, h);
+
     for (const s of this.stars) {
+      if (s.r > 0.8) {
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r * 3, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,200,${s.a * 0.15})`;
+        ctx.fill();
+      }
       ctx.beginPath();
       ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(255,255,255,${s.a})`;
+      ctx.fillStyle = `rgba(255,255,220,${s.a})`;
       ctx.fill();
     }
 
-    // Ground
+    // Mountains
     const groundY = h * 0.65;
-    ctx.fillStyle = '#3a2e1f';
+    ctx.fillStyle = '#1a2008';
+    ctx.beginPath();
+    ctx.moveTo(0, groundY);
+    for (let i = 0; i <= 10; i++) {
+      const mx = (i / 10) * w;
+      const my = groundY - 25 - Math.abs(Math.sin(i * 1.7)) * 30;
+      ctx.lineTo(mx, my);
+    }
+    ctx.lineTo(w, groundY);
+    ctx.closePath();
+    ctx.fill();
+
+    // Ground
+    const gg = ctx.createLinearGradient(0, groundY, 0, h);
+    gg.addColorStop(0, '#5a5028');
+    gg.addColorStop(0.5, '#3a3018');
+    gg.addColorStop(1, '#1a1008');
+    ctx.fillStyle = gg;
     ctx.fillRect(0, groundY, w, h - groundY);
 
     // Particles
