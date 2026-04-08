@@ -23,6 +23,7 @@ import { CoopBoss } from './coop-boss.js';
 import { StoryPlanet } from './story-planet.js';
 import { Space3D } from './space-3d.js';
 import { Galaxy3D } from './galaxy-3d.js';
+import { Tutorial } from './tutorial.js';
 import { TaskList } from './task-list.js';
 import { RacingGame } from './racing-game.js';
 
@@ -63,6 +64,7 @@ export class Game {
     this.worldSync = new WorldSync();
     this.chat = new Chat();
     this.tasks = new TaskList();
+    this.tutorial = new Tutorial();
     this.intro = null;
 
     this.input.onTap = (x, y) => this.handleTap(x, y);
@@ -128,6 +130,7 @@ export class Game {
       return;
     }
 
+    if (this.tutorial.handleTap(x, y)) return;
     if (this.tasks.handleTap(x, y)) return;
     if (this.multiplayerActive && this.chat.handleTap(x, y)) return;
 
@@ -546,6 +549,10 @@ export class Game {
       if (move.x !== 0 || move.y !== 0) {
         this.surface.player.update(dt, move.x, move.y);
       }
+      if (this.input.punchPressed || this.input.gamepadJustPunch) {
+        this.input.punchPressed = false;
+        this.surface.tryPunch();
+      }
       if (this.input.spaceDown) {
         const couldFire = this.surface.player.fireCooldown <= 0;
         this.surface.tryShoot(this.input.mouseX, this.input.mouseY);
@@ -815,6 +822,11 @@ export class Game {
         this.chat.render(ctx, this.width, this.height);
       }
       this.renderBackButton(ctx);
+    }
+
+    // Tutorial overlay — always on top
+    if (this.state !== STATE.TITLE && this.state !== STATE.LOBBY) {
+      this.tutorial.render(ctx, this.width, this.height);
     }
   }
 

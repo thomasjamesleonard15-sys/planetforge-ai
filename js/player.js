@@ -11,6 +11,8 @@ export class Player {
     this.maxHealth = 100;
     this.weaponIndex = 0;
     this.fireCooldown = 0;
+    this.punchCooldown = 0;
+    this.punchAnim = 0;
     this.invulnTimer = 0;
     this.skinIndex = 0;
   }
@@ -44,6 +46,8 @@ export class Player {
     this.y = Math.max(margin, Math.min(max, this.y));
 
     if (this.fireCooldown > 0) this.fireCooldown -= dt;
+    if (this.punchCooldown > 0) this.punchCooldown -= dt;
+    if (this.punchAnim > 0) this.punchAnim -= dt * 4;
     if (this.invulnTimer > 0) this.invulnTimer -= dt;
   }
 

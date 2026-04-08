@@ -311,6 +311,37 @@ export class SurfaceView {
     );
   }
 
+  tryPunch() {
+    if (this.player.punchCooldown > 0) return;
+    this.player.punchCooldown = 0.4;
+    this.player.punchAnim = 1;
+    const range = this.player.radius + 30;
+    let hit = false;
+    if (this.enemies) {
+      for (const e of this.enemies.pool) {
+        if (!e.active) continue;
+        const dx = e.x - this.player.x, dy = e.y - this.player.y;
+        if (dx * dx + dy * dy < (range + e.radius) ** 2) {
+          e.health -= 30;
+          hit = true;
+          // Knockback
+          const a = Math.atan2(dy, dx);
+          e.x += Math.cos(a) * 20;
+          e.y += Math.sin(a) * 20;
+          this.particles.emit(e.x, e.y, 8, { color: '#ffdd44', speed: 150, life: 0.3, radius: 3 });
+          if (e.health <= 0) {
+            e.active = false;
+            this.resources.add('metal', e.reward);
+            this.resources.score += e.reward;
+          }
+        }
+      }
+    }
+    if (hit) {
+      this.screenShake = Math.max(this.screenShake, 4);
+    }
+  }
+
   tryShoot(sx, sy) {
     if (!this.player.canFire()) return;
     let angle;

@@ -10,6 +10,13 @@ export class InputHandler {
     this.onActionDrag = null;
     this.actionLastX = 0;
     this.actionLastY = 0;
+    this.gamepadAxes = { x: 0, y: 0 };
+    this.gamepadFire = false;
+    this.gamepadPunch = false;
+    this.gamepadJustPunch = false;
+    this.lastGamepadPunch = false;
+
+    window.addEventListener('gamepadconnected', () => {});
     this.keys = new Set();
     this.joystickTouchId = null;
     this.actionTouchId = null;
@@ -18,6 +25,7 @@ export class InputHandler {
     this.spaceDown = false;
     this.enterPressed = false;
     this.yPressed = false;
+    this.punchPressed = false;
 
     canvas.addEventListener('touchstart', (e) => this.handleTouchStart(e), { passive: false });
     canvas.addEventListener('touchmove', (e) => this.handleTouchMove(e), { passive: false });
@@ -31,6 +39,7 @@ export class InputHandler {
       if (isSpace) { e.preventDefault(); this.spaceDown = true; }
       if (e.key === 'Enter') this.enterPressed = true;
       if (e.key === 'y' || e.key === 'Y') this.yPressed = true;
+      if (e.key === 'f' || e.key === 'F') this.punchPressed = true;
       this.keys.add(e.key.toLowerCase());
       if (this.onKey) this.onKey(e.key);
     });
@@ -121,13 +130,41 @@ export class InputHandler {
     if (this.onDragEnd) this.onDragEnd();
   }
 
+  pollGamepad() {
+    if (!navigator.getGamepads) return;
+    const gps = navigator.getGamepads();
+    let gp = null;
+    for (const g of gps) { if (g) { gp = g; break; } }
+    if (!gp) { this.gamepadAxes.x = 0; this.gamepadAxes.y = 0; this.gamepadFire = false; this.gamepadPunch = false; return; }
+    const dead = 0.15;
+    const ax = gp.axes[0] || 0;
+    const ay = gp.axes[1] || 0;
+    this.gamepadAxes.x = Math.abs(ax) > dead ? ax : 0;
+    this.gamepadAxes.y = Math.abs(ay) > dead ? ay : 0;
+    // Right trigger or R1 / A button = fire
+    const fire = (gp.buttons[7] && gp.buttons[7].pressed) || (gp.buttons[5] && gp.buttons[5].pressed) || (gp.buttons[0] && gp.buttons[0].pressed);
+    this.gamepadFire = fire;
+    // X button (index 2) = punch
+    const punch = gp.buttons[2] && gp.buttons[2].pressed;
+    this.gamepadJustPunch = punch && !this.lastGamepadPunch;
+    this.lastGamepadPunch = punch;
+    this.gamepadPunch = punch;
+    // Start button = Enter
+    if (gp.buttons[9] && gp.buttons[9].pressed) this.enterPressed = true;
+    // Update spaceDown for shooting
+    if (fire) this.spaceDown = true;
+  }
+
   getMoveVector() {
+    this.pollGamepad();
     let mx = 0;
     let my = 0;
     if (this.keys.has('w') || this.keys.has('arrowup')) my -= 1;
     if (this.keys.has('s') || this.keys.has('arrowdown')) my += 1;
     if (this.keys.has('a') || this.keys.has('arrowleft')) mx -= 1;
     if (this.keys.has('d') || this.keys.has('arrowright')) mx += 1;
+    mx += this.gamepadAxes.x;
+    my += this.gamepadAxes.y;
     return { x: mx, y: my };
   }
 }
