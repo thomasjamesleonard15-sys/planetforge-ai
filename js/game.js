@@ -774,6 +774,49 @@ export class Game {
     }
   }
 
+  renderGamepadDebug(ctx) {
+    // Persistent gamepad debug overlay — always visible
+    const gps = navigator.getGamepads ? navigator.getGamepads() : [];
+    let gp = null;
+    let count = 0;
+    for (const g of gps) {
+      if (g) { count++; if (!gp && g.connected) gp = g; }
+    }
+    const dy = this.height - 90;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+    ctx.fillRect(0, dy, 500, 90);
+    ctx.strokeStyle = gp ? '#44ff66' : '#ff4444';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(0, dy, 500, 90);
+    ctx.font = 'bold 12px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#fff';
+    ctx.fillText(`Pads entries: ${gps.length}  Non-null: ${count}  Found: ${gp ? 'YES' : 'NO'}`, 8, dy + 18);
+    if (gp) {
+      ctx.fillStyle = '#88ff88';
+      const name = gp.id.length > 50 ? gp.id.slice(0, 50) + '...' : gp.id;
+      ctx.fillText(name, 8, dy + 34);
+      ctx.fillStyle = '#88ccff';
+      const axesTxt = gp.axes.slice(0, 4).map(a => a.toFixed(2)).join(' ');
+      ctx.fillText(`Axes: ${axesTxt}`, 8, dy + 50);
+      const pressed = [];
+      for (let i = 0; i < gp.buttons.length; i++) {
+        if (gp.buttons[i] && gp.buttons[i].pressed) pressed.push(i);
+      }
+      ctx.fillStyle = pressed.length > 0 ? '#ffaa44' : '#666';
+      ctx.fillText(`Buttons pressed: [${pressed.join(',') || 'none'}]`, 8, dy + 66);
+      ctx.fillStyle = '#ccc';
+      ctx.fillText(`mapping: ${gp.mapping || 'none'}`, 8, dy + 82);
+    } else {
+      ctx.fillStyle = '#ff8866';
+      ctx.fillText('No gamepad detected', 8, dy + 34);
+      ctx.fillStyle = '#aaa';
+      ctx.fillText('Press any button on the controller to activate it.', 8, dy + 50);
+      ctx.fillText('(Chrome requires a button press before exposing the pad)', 8, dy + 66);
+    }
+    ctx.textAlign = 'left';
+  }
+
   render() {
     const ctx = this.ctx;
     ctx.clearRect(0, 0, this.width, this.height);
@@ -852,6 +895,9 @@ export class Game {
     if (this.state !== STATE.TITLE && this.state !== STATE.LOBBY) {
       this.tutorial.render(ctx, this.width, this.height);
     }
+
+    // Gamepad debug overlay (always visible for now)
+    this.renderGamepadDebug(ctx);
   }
 
   renderBackButton(ctx) {
