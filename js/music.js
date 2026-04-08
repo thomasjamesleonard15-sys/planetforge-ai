@@ -45,7 +45,7 @@ export class MusicSystem {
     if (this.mode === mode) return;
     this.mode = mode;
     this.beat = 0;
-    this.bpm = mode === 'batman' ? 95 : 72;
+    this.bpm = mode === 'batman' ? 95 : mode === 'space' ? 60 : 72;
   }
 
   toggle() {
@@ -81,6 +81,7 @@ export class MusicSystem {
 
   playBeat(time) {
     if (this.mode === 'batman') { this.playBatmanBeat(time); return; }
+    if (this.mode === 'space') { this.playSpaceBeat(time); return; }
     const scale = SCALES[this.mode] || SCALES.galaxy;
     const base = BASE_NOTES[this.mode] || 55;
     const beat = this.beat;
@@ -245,6 +246,90 @@ export class MusicSystem {
     if (beat % 16 === 0) {
       this.playTone(base * 0.5, time, 0.12, 'sine', 0.2, 0);
       this.playTone(base * 0.5, time + 0.18, 0.1, 'sine', 0.15, 0);
+    }
+  }
+
+  playSpaceBeat(time) {
+    const scale = SCALES.space;
+    const base = BASE_NOTES.space;
+    const beat = this.beat;
+
+    // Deep space drone — sustained low sine
+    if (beat % 16 === 0) {
+      this.playPad(base * 0.5, time, 6, 0.15);
+      this.playPad(base * 0.75, time, 6, 0.1);
+    }
+
+    // Slow ethereal pad chords every 4 measures
+    if (beat % (this.measureLen * 2) === 0) {
+      const root = base * 2 * Math.pow(2, scale[0] / 12);
+      const third = base * 2 * Math.pow(2, scale[2] / 12);
+      const fifth = base * 2 * Math.pow(2, scale[4] / 12);
+      const seventh = base * 2 * Math.pow(2, scale[6] / 12);
+      this.playPad(root, time, 8, 0.08);
+      this.playPad(third, time, 8, 0.06);
+      this.playPad(fifth, time, 8, 0.06);
+      this.playPad(seventh, time, 8, 0.04);
+    }
+    // Alternate chord
+    if (beat === this.measureLen) {
+      const root = base * 2 * Math.pow(2, scale[3] / 12);
+      const third = base * 2 * Math.pow(2, scale[5] / 12);
+      const fifth = base * 2 * Math.pow(2, scale[7] / 12);
+      this.playPad(root, time, 6, 0.07);
+      this.playPad(third, time, 6, 0.05);
+      this.playPad(fifth, time, 6, 0.05);
+    }
+
+    // Sparse twinkling high notes — like distant stars
+    if (beat % 4 === 0 && Math.random() > 0.4) {
+      const idx = Math.floor(Math.random() * scale.length);
+      const note = base * 6 * Math.pow(2, scale[idx] / 12);
+      this.playTone(note, time, 1.2, 'sine', 0.06, 0.3);
+    }
+    if (beat % 6 === 0 && Math.random() > 0.5) {
+      const idx = Math.floor(Math.random() * scale.length);
+      const note = base * 8 * Math.pow(2, scale[idx] / 12);
+      this.playTone(note, time, 0.9, 'sine', 0.04, 0.4);
+    }
+
+    // Slow drifting arpeggio every 8 beats
+    if (beat % 8 === 0) {
+      const notes = [scale[0], scale[2], scale[4], scale[6], scale[4], scale[2]];
+      for (let i = 0; i < notes.length; i++) {
+        const note = base * 4 * Math.pow(2, notes[i] / 12);
+        this.playTone(note, time + i * 0.4, 0.5, 'sine', 0.05, 0.1);
+      }
+    }
+
+    // Whoosh — slow filtered noise sweep every 16 beats
+    if (beat % 32 === 0 && ctx) {
+      const dur = 4;
+      const bufSize = ctx.sampleRate * dur;
+      const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(200, time);
+      filter.frequency.linearRampToValueAtTime(2000, time + dur);
+      filter.Q.value = 8;
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0, time);
+      gain.gain.linearRampToValueAtTime(0.06, time + dur * 0.5);
+      gain.gain.linearRampToValueAtTime(0, time + dur);
+      src.connect(filter); filter.connect(gain); gain.connect(masterGain);
+      src.start(time); src.stop(time + dur + 0.1);
+      nodes.push(src);
+      this.cleanNodes();
+    }
+
+    // Subtle radio bleeps — like distant signals
+    if (beat % 12 === 5) {
+      const note = base * 5 * Math.pow(2, scale[Math.floor(Math.random() * scale.length)] / 12);
+      this.playTone(note, time, 0.08, 'square', 0.04, 0.005);
     }
   }
 
